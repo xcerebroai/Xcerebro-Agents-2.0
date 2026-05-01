@@ -1,0 +1,107 @@
+{
+  "name": "Xcerebro 2.0 — Failed Payment Triage",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe-failed-payment",
+        "options": { "rawBody": true },
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-stripe",
+      "name": "Stripe Webhook (failed)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{$json.body.type}}",
+              "rightValue": "payment_intent.payment_failed",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{$json.body.type}}",
+              "rightValue": "invoice.payment_failed",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "filter-failed",
+      "name": "Filter Failed Payments",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AGENT_RUNTIME_URL}}/agents/auto-cfo/invoke",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{$env.AGENT_RUNTIME_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"task\": \"A payment failed in Stripe. Triage: identify the customer, the amount, the failure reason. Recommend: send recovery email, retry, or manual outreach. Brief output (under 150 words). Do NOT take any action — only recommend.\",\n  \"context\": {\n    \"event_type\": \"{{$json.body.type}}\",\n    \"amount\": \"{{$json.body.data.object.amount}}\",\n    \"customer\": \"{{$json.body.data.object.customer}}\",\n    \"failure_message\": \"{{$json.body.data.object.last_payment_error?.message || 'Unknown'}}\",\n    \"failure_code\": \"{{$json.body.data.object.last_payment_error?.code || 'Unknown'}}\"\n  },\n  \"require_approval\": false\n}",
+        "options": { "timeout": 60000 },
+        "method": "POST"
+      },
+      "id": "cfo-triage",
+      "name": "CFO Triage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "channel": "={{$env.SLACK_NOTIFICATIONS_CHANNEL_ID}}",
+        "text": "=⚠️ *Failed Payment*\n\n{{$json.result}}\n\n_CFO Agent · Xcerebro 2.0_",
+        "otherOptions": { "mrkdwn": true }
+      },
+      "id": "post-slack",
+      "name": "Alert in Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"received\": true}"
+      },
+      "id": "respond",
+      "name": "Respond to Stripe",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 400]
+    }
+  ],
+  "connections": {
+    "Stripe Webhook (failed)": {
+      "main": [[{ "node": "Filter Failed Payments", "type": "main", "index": 0 }, { "node": "Respond to Stripe", "type": "main", "index": 0 }]]
+    },
+    "Filter Failed Payments": {
+      "main": [[{ "node": "CFO Triage", "type": "main", "index": 0 }]]
+    },
+    "CFO Triage": {
+      "main": [[{ "node": "Alert in Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Chicago", "saveDataErrorExecution": "all" },
+  "tags": [{ "name": "xcerebro" }, { "name": "finance" }, { "name": "alerts" }],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

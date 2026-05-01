@@ -1,0 +1,164 @@
+{
+  "name": "Xcerebro 2.0 — Daily KPI Brief",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trigger-cron",
+      "name": "Daily 6am Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AGENT_RUNTIME_URL}}/workflows/trigger",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.AGENT_RUNTIME_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workflow_name\": \"daily-kpi-brief\",\n  \"source\": \"schedule\",\n  \"payload\": {\n    \"date\": \"{{$now.toISOString().slice(0,10)}}\",\n    \"timezone\": \"{{$env.TIMEZONE || 'America/Chicago'}}\"\n  }\n}",
+        "options": {
+          "timeout": 120000
+        },
+        "method": "POST"
+      },
+      "id": "call-crew",
+      "name": "Call CrewAI Daily Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "channel": "={{$env.SLACK_NOTIFICATIONS_CHANNEL_ID}}",
+        "text": "=🌅 *Good morning. Today's brief:*\n\n{{$json.result}}",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "post-slack",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [680, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-bot-credentials",
+          "name": "Slack Bot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AGENT_RUNTIME_URL}}/audit",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.AGENT_RUNTIME_API_KEY}}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-audit",
+      "name": "Fetch Audit Trail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Daily 6am Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call CrewAI Daily Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call CrewAI Daily Brief": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Slack": {
+      "main": [
+        [
+          {
+            "node": "Fetch Audit Trail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago",
+    "saveDataErrorExecution": "all",
+    "saveExecutionProgress": true
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "xcerebro",
+      "id": "xcerebro-tag"
+    },
+    {
+      "name": "daily",
+      "id": "daily-tag"
+    }
+  ],
+  "meta": {
+    "instanceId": "xcerebro-2.0"
+  },
+  "pinData": {},
+  "versionId": "1.0.0"
+}

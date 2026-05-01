@@ -1,0 +1,90 @@
+# ============================================================
+# DIFY KNOWLEDGE BASE TEMPLATE
+# ============================================================
+# This is a TEMPLATE for setting up a knowledge base in Dify.
+# Dify is a UI-driven tool — you can't import this YAML directly.
+# Instead, use this as a checklist when configuring via the UI.
+#
+# Copy this for each knowledge base you want to create:
+#   - product-info
+#   - sales-scripts
+#   - marketing-reference
+#   - rei-operations
+#   - support-faqs
+#   - compliance-reference
+# ============================================================
+
+knowledge_base:
+  name: "Product Info"
+  description: "Xcerebro features, pricing tiers, member benefits, refund policy"
+
+  indexing:
+    method: high_quality  # Recommended for accuracy. Costs ~$0.0001 per 1k tokens.
+    embedding_model: text-embedding-3-large  # OpenAI's best embedding
+    chunking:
+      chunk_size: 500     # tokens per chunk
+      chunk_overlap: 50   # overlap between chunks
+      separator: "\n\n"   # split on double-newline (paragraphs)
+
+  retrieval:
+    top_k: 5              # Number of chunks to retrieve per query
+    score_threshold: 0.5  # Minimum similarity score (0-1)
+    rerank: true          # Use reranker for better relevance (costs more)
+
+  documents:
+    # Suggested initial uploads:
+    - name: "xcerebro-features.md"
+      description: "What's in the product"
+    - name: "pricing-tiers.md"
+      description: "Self-deploy / White-glove / Enterprise"
+    - name: "member-benefits.md"
+      description: "What VIP members get"
+    - name: "refund-policy.md"
+      description: "How refunds work"
+
+  # Which agents can query this knowledge base
+  authorized_agents:
+    - auto-customer-support
+    - auto-cmo
+    - auto-sales-manager
+
+# ============================================================
+# DIFY APP TEMPLATE — Customer FAQ Bot
+# ============================================================
+app:
+  name: "Customer FAQ Bot"
+  type: chatbot
+
+  instructions: |
+    You are a helpful customer support assistant for Xcerebro,
+    an AI-powered autonomous workforce platform.
+
+    Use the connected knowledge bases to answer customer questions accurately.
+
+    Rules:
+    - Only answer using information from the knowledge bases.
+    - If you don't know, say so honestly. Offer to escalate to human support.
+    - Be warm and direct. No corporate-speak. No "Thank you for reaching out!"
+    - If the question is about billing or refund: hand off to human support.
+    - If the customer is angry or frustrated: acknowledge feelings first, then problem-solve.
+
+  knowledge_bases:
+    - product-info
+    - support-faqs
+    - pricing-tiers
+
+  llm:
+    provider: anthropic
+    model: claude-sonnet-4-5
+    temperature: 0.3  # Lower = more consistent, less creative
+
+  features:
+    suggested_questions: true
+    citation: true  # Show which doc the answer came from
+    speech_to_text: false
+    text_to_speech: false
+
+  embed:
+    enabled: true
+    placement: "bottom-right"
+    primary_color: "#3B82F6"  # Xcerebro electric blue

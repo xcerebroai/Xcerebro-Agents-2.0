@@ -1,0 +1,113 @@
+{
+  "name": "Xcerebro 2.0 — Stripe Payment Celebration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe-payment",
+        "options": {
+          "rawBody": true
+        },
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-stripe",
+      "name": "Stripe Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{$json.body.type}}",
+              "rightValue": "payment_intent.succeeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{$json.body.type}}",
+              "rightValue": "checkout.session.completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "filter-success",
+      "name": "Filter Successful Payments",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract amount, customer, and product from Stripe webhook\nconst event = $input.first().json.body;\nconst data = event.data.object;\n\nlet amount = 0;\nlet currency = 'usd';\nlet customer = data.customer || data.customer_email || 'Unknown';\nlet description = '';\n\nif (event.type === 'payment_intent.succeeded') {\n  amount = data.amount / 100;\n  currency = data.currency.toUpperCase();\n  description = data.description || 'Payment received';\n} else if (event.type === 'checkout.session.completed') {\n  amount = data.amount_total / 100;\n  currency = data.currency.toUpperCase();\n  description = data.metadata?.product_name || 'Checkout completed';\n  customer = data.customer_email || customer;\n}\n\nreturn [{\n  json: {\n    amount,\n    currency,\n    customer,\n    description,\n    event_type: event.type,\n    timestamp: new Date(event.created * 1000).toISOString()\n  }\n}];"
+      },
+      "id": "extract-data",
+      "name": "Extract Payment Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "channel": "={{$env.SLACK_NOTIFICATIONS_CHANNEL_ID}}",
+        "text": "=🎉 *NEW PAYMENT* 🎉\n\nAmount: *${{$json.amount}} {{$json.currency}}*\nCustomer: {{$json.customer}}\nProduct: {{$json.description}}\n\n_{{$now.format('MMM D, h:mm A')}}_",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "post-slack",
+      "name": "Celebrate in Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"received\": true}"
+      },
+      "id": "respond",
+      "name": "Respond to Stripe",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 400]
+    }
+  ],
+  "connections": {
+    "Stripe Webhook": {
+      "main": [[{ "node": "Filter Successful Payments", "type": "main", "index": 0 }, { "node": "Respond to Stripe", "type": "main", "index": 0 }]]
+    },
+    "Filter Successful Payments": {
+      "main": [
+        [{ "node": "Extract Payment Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Payment Data": {
+      "main": [[{ "node": "Celebrate in Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago",
+    "saveDataErrorExecution": "all"
+  },
+  "tags": [{ "name": "xcerebro" }, { "name": "finance" }, { "name": "stripe" }],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

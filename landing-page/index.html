@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Xcerebro — Your Autonomous AI Workforce</title>
+<meta name="description" content="18 leadership agents + 74 specialists running on your infrastructure. Self-install through VIP membership or done-for-you custom builds." />
+<meta property="og:title" content="Xcerebro — Your Autonomous AI Workforce" />
+<meta property="og:description" content="18 leadership agents + 74 specialists. Self-install or done-for-you." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://xcerebro.ai" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --black: #0A0A0A;
+    --midnight: #0F172A;
+    --blue: #3B82F6;
+    --light-blue: #60A5FA;
+    --soft-gray: #E5E7EB;
+    --dark-gray: #1F2937;
+    --gray: #6B7280;
+    --green: #10B981;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--black);
+    color: var(--soft-gray);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10, 10, 10, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--dark-gray);
+    padding: 16px 0;
+  }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--blue), var(--light-blue));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: var(--black);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+  .brand-name { font-size: 18px; font-weight: 700; color: white; letter-spacing: 1px; }
+  .nav-links { display: flex; gap: 32px; align-items: center; }
+  .nav-links a { color: var(--soft-gray); text-decoration: none; font-size: 14px; transition: color 0.15s; }
+  .nav-links a:hover { color: var(--light-blue); }
+  .nav-cta {
+    background: var(--blue) !important;
+    color: white !important;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  .nav-cta:hover { background: #2563EB !important; }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    padding: 140px 0 80px;
+    background:
+      radial-gradient(ellipse at top right, rgba(59, 130, 246, 0.15), transparent 50%),
+      radial-gradient(ellipse at bottom left, rgba(96, 165, 250, 0.08), transparent 50%),
+      var(--black);
+    display: flex;
+    align-items: center;
+  }
+  .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+  .hero-eyebrow {
+    display: inline-block;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--light-blue);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  h1 {
+    font-size: 64px;
+    font-weight: 800;
+    color: white;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 24px;
+  }
+  h1 .accent {
+    background: linear-gradient(135deg, var(--blue), var(--light-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: 20px;
+    color: var(--gray);
+    margin-bottom: 32px;
+    max-width: 540px;
+  }
+  .hero-cta-group { display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--blue);
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s;
+    font-family: inherit;
+    box-shadow: 0 0 24px rgba(59, 130, 246, 0.3);
+  }
+  .btn-primary:hover { background: #2563EB; transform: translateY(-1px); box-shadow: 0 0 32px rgba(59, 130, 246, 0.5); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--soft-gray);
+    border: 1px solid var(--dark-gray);
+    padding: 16px 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn-secondary:hover { border-color: var(--blue); color: white; }
+  .hero-trust { font-size: 13px; color: var(--gray); }
+  .hero-trust strong { color: var(--soft-gray); }
+
+  /* HERO VISUAL */
+  .hero-visual {
+    background: linear-gradient(135deg, var(--midnight), var(--black));
+    border: 1px solid var(--dark-gray);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 0 60px rgba(59, 130, 246, 0.15);
+  }
+  .terminal-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+  .terminal-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--dark-gray); }
+  .terminal-dot.red { background: #EF4444; }
+  .terminal-dot.yellow { background: #F59E0B; }
+  .terminal-dot.green { background: var(--green); }
+  .terminal-content {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'SF Mono', Monaco, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .terminal-line { display: flex; gap: 8px; margin-bottom: 8px; }
+  .terminal-time { color: var(--gray); flex-shrink: 0; }
+  .terminal-agent { color: var(--light-blue); flex-shrink: 0; }
+  .terminal-msg { color: var(--soft-gray); }
+  .blink { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+  /* SECTION */
+  section { padding: 100px 0; }
+  .section-eyebrow {
+    color: var(--light-blue);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  h2 {
+    font-size: 48px;
+    font-weight: 800;
+    color: white;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .section-sub {
+    font-size: 18px;
+    color: var(--gray);
+    text-align: center;
+    max-width: 640px;
+    margin: 0 auto 64px;
+  }
+
+  /* WHATS NEW */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1000px; margin: 0 auto; }
+  .compare-card {
+    background: var(--midnight);
+    border: 1px solid var(--dark-gray);
+    border-radius: 16px;
+    padding: 32px;
+  }
+  .compare-card.highlight { border-color: var(--blue); box-shadow: 0 0 40px rgba(59, 130, 246, 0.15); }
+  .compare-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+  .compare-tag.old { background: var(--dark-gray); color: var(--gray); }
+  .compare-tag.new { background: rgba(59, 130, 246, 0.2); color: var(--light-blue); }
+  .compare-card h3 { color: white; font-size: 22px; margin-bottom: 16px; }
+  .compare-list { list-style: none; }
+  .compare-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(31, 41, 55, 0.5);
+    color: var(--soft-gray);
+    font-size: 15px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .compare-list li:last-child { border-bottom: none; }
+  .compare-list .check { color: var(--green); flex-shrink: 0; }
+  .compare-list .x { color: var(--gray); flex-shrink: 0; }
+
+  /* FEATURES */
+  .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .feature-card {
+    background: var(--midnight);
+    border: 1px solid var(--dark-gray);
+    border-radius: 12px;
+    padding: 28px;
+    transition: all 0.2s;
+  }
+  .feature-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+  .feature-icon {
+    width: 44px; height: 44px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+  .feature-title { color: white; font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .feature-desc { color: var(--gray); font-size: 14px; }
+
+  /* TWO TRACKS */
+  .tracks { background: linear-gradient(180deg, var(--black), var(--midnight)); }
+  .tracks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; max-width: 1100px; margin: 0 auto; }
+  .track-card {
+    background: var(--black);
+    border: 1px solid var(--dark-gray);
+    border-radius: 16px;
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .track-card.featured {
+    border-color: var(--blue);
+    box-shadow: 0 0 60px rgba(59, 130, 246, 0.2);
+  }
+  .track-badge {
+    position: absolute;
+    top: -12px;
+    right: 24px;
+    background: var(--blue);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .track-eyebrow {
+    color: var(--light-blue);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .track-title { color: white; font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .track-tagline { color: var(--gray); font-size: 15px; margin-bottom: 24px; }
+  .track-price { font-size: 40px; font-weight: 800; color: white; line-height: 1.1; margin-bottom: 4px; }
+  .track-price-sub { color: var(--gray); font-size: 14px; margin-bottom: 24px; }
+  .track-features { list-style: none; flex: 1; margin-bottom: 28px; }
+  .track-features li {
+    padding: 10px 0;
+    color: var(--soft-gray);
+    font-size: 15px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-bottom: 1px solid rgba(31, 41, 55, 0.4);
+  }
+  .track-features li:last-child { border-bottom: none; }
+  .track-features .check { color: var(--green); font-weight: bold; flex-shrink: 0; }
+  .track-cta {
+    display: block;
+    text-align: center;
+    padding: 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-size: 15px;
+  }
+  .track-cta-primary { background: var(--blue); color: white; }
+  .track-cta-primary:hover { background: #2563EB; }
+  .track-cta-secondary {
+    background: transparent;
+    color: var(--soft-gray);
+    border: 1px solid var(--dark-gray);
+  }
+  .track-cta-secondary:hover { border-color: var(--blue); color: white; }
+
+  /* CUSTOM TIERS TABLE */
+  .custom-tiers {
+    background: var(--midnight);
+    border: 1px solid var(--dark-gray);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+  }
+  .custom-tiers-title {
+    color: var(--light-blue);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+  .custom-tier-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(31, 41, 55, 0.4);
+    font-size: 14px;
+  }
+  .custom-tier-row:last-child { border-bottom: none; }
+  .custom-tier-agents { color: var(--soft-gray); }
+  .custom-tier-price { color: white; font-weight: 600; }
+
+  /* FAQ */
+  .faq-list { max-width: 800px; margin: 0 auto; }
+  details {
+    background: var(--midnight);
+    border: 1px solid var(--dark-gray);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  details:hover { border-color: var(--blue); }
+  details[open] { border-color: var(--blue); }
+  summary {
+    list-style: none;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after {
+    content: '+';
+    color: var(--light-blue);
+    font-size: 24px;
+    font-weight: 300;
+    transition: transform 0.2s;
+  }
+  details[open] summary::after { transform: rotate(45deg); }
+  details p { margin-top: 16px; color: var(--gray); font-size: 15px; line-height: 1.6; }
+
+  /* FINAL CTA */
+  .final-cta {
+    text-align: center;
+    background:
+      radial-gradient(ellipse at center, rgba(59, 130, 246, 0.2), transparent 60%),
+      var(--black);
+    padding: 120px 0;
+  }
+  .final-cta h2 { margin-bottom: 24px; }
+  .final-cta .section-sub { margin-bottom: 40px; }
+  .final-cta-group { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+  /* FOOTER */
+  footer {
+    background: var(--black);
+    border-top: 1px solid var(--dark-gray);
+    padding: 48px 0 24px;
+  }
+  .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 32px; }
+  .footer-brand { color: var(--gray); font-size: 14px; max-width: 320px; margin-top: 12px; }
+  .footer-col h4 { color: white; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  .footer-col a { display: block; color: var(--gray); text-decoration: none; font-size: 14px; padding: 4px 0; transition: color 0.15s; }
+  .footer-col a:hover { color: var(--light-blue); }
+  .footer-bottom {
+    border-top: 1px solid var(--dark-gray);
+    padding-top: 24px;
+    text-align: center;
+    color: var(--gray);
+    font-size: 13px;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .hero-grid, .compare-grid, .tracks-grid, .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+    h1 { font-size: 44px; }
+    h2 { font-size: 32px; }
+    .nav-links { gap: 16px; }
+    .nav-links a:not(.nav-cta) { display: none; }
+  }
+  @media (max-width: 600px) {
+    .hero { padding: 100px 0 60px; }
+    h1 { font-size: 36px; }
+    .hero-sub { font-size: 16px; }
+    section { padding: 60px 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container nav-inner">
+    <a href="#" class="brand">
+      <div class="logo">X</div>
+      <div class="brand-name">XCEREBRO</div>
+    </a>
+    <div class="nav-links">
+      <a href="#whats-new">What's New</a>
+      <a href="#inside">Inside</a>
+      <a href="#tracks">Get Started</a>
+      <a href="#faq">FAQ</a>
+      <a href="#tracks" class="nav-cta">Deploy →</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <span class="hero-eyebrow">Xcerebro 2.0 · Now Shipping</span>
+      <h1>Your <span class="accent">Autonomous AI Workforce</span>.</h1>
+      <p class="hero-sub">
+        18 leadership agents + 74 specialists running on <strong style="color: white;">your infrastructure</strong>. Self-install through VIP membership, or we build it for you.
+      </p>
+      <div class="hero-cta-group">
+        <a href="#tracks" class="btn-primary">See how to get started →</a>
+        <a href="#whats-new" class="btn-secondary">See how it works</a>
+      </div>
+      <p class="hero-trust">
+        Built by an operator who runs a real business · <strong>Two ways in</strong> · No vendor lock-in
+      </p>
+    </div>
+    <div class="hero-visual">
+      <div class="terminal-bar">
+        <div class="terminal-dot red"></div>
+        <div class="terminal-dot yellow"></div>
+        <div class="terminal-dot green"></div>
+      </div>
+      <div class="terminal-content">
+        <div class="terminal-line"><span class="terminal-time">06:00</span><span class="terminal-agent">[CEO]</span><span class="terminal-msg">Daily KPI Brief generated. Sent to Slack.</span></div>
+        <div class="terminal-line"><span class="terminal-time">09:14</span><span class="terminal-agent">[CMO]</span><span class="terminal-msg">Trend spotted: AI agents on TikTok ↑40%</span></div>
+        <div class="terminal-line"><span class="terminal-time">11:32</span><span class="terminal-agent">[Sales Rep]</span><span class="terminal-msg">DM drafted to @qf_xcerebro · awaiting approval</span></div>
+        <div class="terminal-line"><span class="terminal-time">14:08</span><span class="terminal-agent">[CFO]</span><span class="terminal-msg">Failed Stripe payment triaged. Recovery email sent.</span></div>
+        <div class="terminal-line"><span class="terminal-time">16:45</span><span class="terminal-agent">[Compliance]</span><span class="terminal-msg">Outbound copy reviewed. 1 flag forwarded.</span></div>
+        <div class="terminal-line"><span class="terminal-time">18:00</span><span class="terminal-agent">[Hook Writer]</span><span class="terminal-msg">3 hook variants for tomorrow's Reel.</span></div>
+        <div class="terminal-line"><span class="terminal-time">19:22</span><span class="terminal-agent">[DM Agent]</span><span class="terminal-msg">12 comments processed. 8 lead magnets queued.</span></div>
+        <div class="terminal-line"><span class="terminal-time">21:00</span><span class="terminal-agent">[CEO]</span><span class="terminal-msg">EOD wrap. Tomorrow's brief at 06:00. <span class="blink">_</span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="whats-new">
+  <div class="container">
+    <p class="section-eyebrow">What changed in 2.0</p>
+    <h2>From presets to <span style="background: linear-gradient(135deg, var(--blue), var(--light-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">autonomous workforce</span></h2>
+    <p class="section-sub">v1.0 gave you 199 markdown personality presets for Claude Code. Useful, but only when you typed. v2.0 keeps all 199 AND adds real autonomy on your own infrastructure.</p>
+
+    <div class="compare-grid">
+      <div class="compare-card">
+        <span class="compare-tag old">Xcerebro 1.0</span>
+        <h3>The original library</h3>
+        <ul class="compare-list">
+          <li><span class="check">✓</span><span>199 markdown agent personality presets</span></li>
+          <li><span class="check">✓</span><span>Works inside Claude Code</span></li>
+          <li><span class="check">✓</span><span>Specialized roles (engineering, design, REI)</span></li>
+          <li><span class="x">×</span><span style="color: var(--gray);">Not autonomous — only runs when you type</span></li>
+          <li><span class="x">×</span><span style="color: var(--gray);">No pre-built workflows</span></li>
+          <li><span class="x">×</span><span style="color: var(--gray);">No coordination between agents</span></li>
+          <li><span class="x">×</span><span style="color: var(--gray);">No integrations with your business tools</span></li>
+        </ul>
+      </div>
+      <div class="compare-card highlight">
+        <span class="compare-tag new">Xcerebro 2.0 — New</span>
+        <h3>Adds real autonomy on top</h3>
+        <ul class="compare-list">
+          <li><span class="check">✓</span><span><strong>Includes all 199 v1.0 agents</strong> (Tier C)</span></li>
+          <li><span class="check">✓</span><span><strong>+18 autonomous orchestrators</strong> (CEO, COO, CFO, CMO, etc.)</span></li>
+          <li><span class="check">✓</span><span><strong>+74 specialists</strong> coordinated by leadership</span></li>
+          <li><span class="check">✓</span><span><strong>9 pre-built workflows</strong> (KPI brief, comment-to-DM, etc.)</span></li>
+          <li><span class="check">✓</span><span><strong>Real integrations:</strong> GHL, Stripe, Instagram, Slack, Skool</span></li>
+          <li><span class="check">✓</span><span><strong>Slack approval inbox</strong> — agents draft, you approve</span></li>
+          <li><span class="check">✓</span><span><strong>Hard cost controls</strong> — never get a surprise $1K bill</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="inside" style="background: var(--midnight);">
+  <div class="container">
+    <p class="section-eyebrow">What's actually inside</p>
+    <h2>92 autonomous agents · 9 workflows · 5 integrated tools</h2>
+    <p class="section-sub">Every piece of this is shippable infrastructure, not "demo" code. Production-grade open source: CrewAI, LangGraph, n8n, Dify, Postgres.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">👔</div>
+        <div class="feature-title">18 Leadership Agents</div>
+        <div class="feature-desc">CEO, COO, CFO, CMO, Sales Manager, DM Agent, Lead Manager, Compliance, Title Specialist, Project Manager, and more. Run on schedule. Delegate to specialists.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🛠️</div>
+        <div class="feature-title">74 Specialist Agents</div>
+        <div class="feature-desc">Hook Writer, Copy Chief, Email Copywriter, REI Wholesale Acquisitions, Disposition Specialist, CRM Cleaner, SOP Writer, and 67 more across 9 functional pods.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">9 Pre-Built Workflows</div>
+        <div class="feature-desc">Daily KPI Brief, Comment-to-DM Pipeline, Stripe Payment Celebrations, Failed Payment Triage, Skool Cohort Heartbeat, Meeting Prep Brief, and more.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <div class="feature-title">Slack Approval Inbox</div>
+        <div class="feature-desc">Sensitive agent actions require approval. One tap in Slack to approve or reject. Build trust over 30 days, then graduate categories to auto-fire.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Operator Dashboard</div>
+        <div class="feature-desc">Single-page dashboard showing runtime status, agent activity, executions, pending approvals, and live LLM cost. Drop on Vercel or open locally.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📚</div>
+        <div class="feature-title">9 Documentation Guides</div>
+        <div class="feature-desc">Quick-start, Railway deploy, n8n configure, Dify configure, agent runtime, approval system, cost guide, troubleshooting, upgrade path.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔓</div>
+        <div class="feature-title">Self-Hosted, Owned</div>
+        <div class="feature-desc">Runs on your Railway. Your Postgres. Your data. License-clean across MIT/Apache/AGPL. No vendor lock-in. Cancel anytime — you keep everything.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎬</div>
+        <div class="feature-title">First-Run Walkthrough</div>
+        <div class="feature-desc">10-minute Loom video walks you through deploy from zero. Most operators are live within 60 minutes of getting access.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <div class="feature-title">Skool VIP Community</div>
+        <div class="feature-desc">Direct admin access for help, weekly Q&As, and other operators deploying their own workforces. The room you want to be in.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tracks" class="tracks">
+  <div class="container">
+    <p class="section-eyebrow">Two ways in</p>
+    <h2>Self-install or done-for-you</h2>
+    <p class="section-sub">Pick the path that fits how you work. Both get you the same autonomous workforce — different levels of hands-on.</p>
+
+    <div class="tracks-grid">
+
+      <!-- TRACK 1: VIP -->
+      <div class="track-card">
+        <div class="track-eyebrow">Track 1 · Self-Install</div>
+        <div class="track-title">VIP Membership</div>
+        <p class="track-tagline">For operators willing to follow a guide and get hands-on.</p>
+        <div class="track-price">$97<span style="font-size: 18px; color: var(--gray);">/mo</span></div>
+        <div class="track-price-sub">or $500/year (save $664)</div>
+        <ul class="track-features">
+          <li><span class="check">✓</span> Full Xcerebro 2.0 self-install kit</li>
+          <li><span class="check">✓</span> 18 Tier A + 74 Tier B autonomous agents</li>
+          <li><span class="check">✓</span> 199 Tier C on-demand presets</li>
+          <li><span class="check">✓</span> 9 pre-built n8n workflows</li>
+          <li><span class="check">✓</span> Operator dashboard</li>
+          <li><span class="check">✓</span> 9 documentation guides</li>
+          <li><span class="check">✓</span> First-run walkthrough video</li>
+          <li><span class="check">✓</span> Direct admin team access for onboarding help</li>
+          <li><span class="check">✓</span> Skool VIP community access</li>
+        </ul>
+        <a href="https://skool.com/aicheatcodes" target="_blank" class="track-cta track-cta-secondary">Subscribe through Skool →</a>
+      </div>
+
+      <!-- TRACK 2: Custom -->
+      <div class="track-card featured">
+        <div class="track-badge">Most operators choose this</div>
+        <div class="track-eyebrow">Track 2 · Done-For-You</div>
+        <div class="track-title">Custom Install</div>
+        <p class="track-tagline">For operators who want it deployed RIGHT the first time. We build, install, and launch.</p>
+        <div class="track-price">From $3,000</div>
+        <div class="track-price-sub">priced per agent · bundle and save</div>
+
+        <div class="custom-tiers">
+          <div class="custom-tiers-title">Pricing tiers</div>
+          <div class="custom-tier-row">
+            <span class="custom-tier-agents">1 agent</span>
+            <span class="custom-tier-price">$3,000</span>
+          </div>
+          <div class="custom-tier-row">
+            <span class="custom-tier-agents">2 agents</span>
+            <span class="custom-tier-price">$5,000</span>
+          </div>
+          <div class="custom-tier-row">
+            <span class="custom-tier-agents">5 agents</span>
+            <span class="custom-tier-price">$10,000</span>
+          </div>
+          <div class="custom-tier-row">
+            <span class="custom-tier-agents">10 agents</span>
+            <span class="custom-tier-price">$18,000</span>
+          </div>
+          <div class="custom-tier-row">
+            <span class="custom-tier-agents">10+ agents</span>
+            <span class="custom-tier-price">DM for quote</span>
+          </div>
+        </div>
+
+        <ul class="track-features">
+          <li><span class="check">✓</span> Custom agents built for YOUR business</li>
+          <li><span class="check">✓</span> Live deployment call (Zoom)</li>
+          <li><span class="check">✓</span> Done-for-you setup of every integration</li>
+          <li><span class="check">✓</span> Custom workflows for your operations</li>
+          <li><span class="check">✓</span> First workflow firing before we hang up</li>
+          <li><span class="check">✓</span> Direct support until it's running clean</li>
+        </ul>
+        <a href="#custom-contact" class="track-cta track-cta-primary">Book a discovery call →</a>
+      </div>
+
+    </div>
+
+    <div id="custom-contact" style="text-align: center; margin-top: 48px; padding: 32px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; max-width: 800px; margin-left: auto; margin-right: auto;">
+      <h3 style="color: white; margin-bottom: 12px; font-size: 22px;">Ready for Custom Install?</h3>
+      <p style="color: var(--gray); margin-bottom: 20px;">DM <strong style="color: var(--light-blue);">@Quentin Flores</strong> in Skool or email <strong style="color: var(--light-blue);">operator@xcerebro.ai</strong> with: how many agents you want, what your business does, and your top 3 tasks to automate.</p>
+      <p style="color: var(--gray); font-size: 14px;">We respond within 24 hours · Discovery call → close → invoice (wire or invoicing portal) · We deliver the entire install</p>
+    </div>
+
+  </div>
+</section>
+
+<section id="faq">
+  <div class="container">
+    <p class="section-eyebrow">Common questions</p>
+    <h2>Honest answers</h2>
+    <p class="section-sub">If your question isn't here, DM <strong style="color: var(--light-blue);">@qf_xcerebro</strong> on Instagram.</p>
+
+    <div class="faq-list">
+      <details>
+        <summary>Is this actually autonomous, or another "AI does it" gimmick?</summary>
+        <p>It's actually autonomous. The Tier A leadership agents run on schedule (cron) via n8n, not when you type. They delegate to Tier B specialists. Outputs go to Slack for your approval initially — once you trust a category, you graduate it to auto-fire. The Tier C library (199 markdown presets from v1.0) is the only "type-to-run" component, and that's been intentional since v1.0.</p>
+      </details>
+      <details>
+        <summary>What's the difference between VIP and Custom Install?</summary>
+        <p>VIP ($97/mo or $500/yr through Skool) gets you the self-install kit. You follow the guides and deploy it yourself with admin team support. Custom Install ($3K+) is done-for-you — we build, install, configure, and launch your entire system. VIP is for operators willing to get hands-on. Custom is for operators who want it done right without touching a terminal.</p>
+      </details>
+      <details>
+        <summary>How do I get access after subscribing to VIP?</summary>
+        <p>Subscribe through Skool, then DM @Quentin Flores or any admin tagged "Admin" in the AI Cheat Codes community. Within 24 hours, an admin will share access to the install kit, guides, and walkthrough video.</p>
+      </details>
+      <details>
+        <summary>What does it cost to RUN it monthly (after install)?</summary>
+        <p>~$65–$285/month total infrastructure. Breakdown: Railway hosting ~$20–80/mo (depends on traffic), Postgres ~$10/mo, LLM costs ~$30–200/mo (depends on how active your agents are — Anthropic or OpenAI). You pay these directly to those vendors. There are no recurring Xcerebro fees beyond your VIP subscription if you choose that path.</p>
+      </details>
+      <details>
+        <summary>What if I bought v1.0?</summary>
+        <p>DM @qf_xcerebro with your purchase email. v1.0 buyers get discounted entry into VIP. The original 199 agents are included in v2.0 as Tier C — you don't lose anything, you gain the autonomous layer on top.</p>
+      </details>
+      <details>
+        <summary>I'm not technical — should I do VIP or Custom?</summary>
+        <p>Custom Install is built for you. We deploy and you don't touch a terminal. VIP requires you to follow guides, copy API keys, and click through Railway. If you're comfortable with that, VIP saves money. If you're not, Custom Install pays for itself in time saved.</p>
+      </details>
+      <details>
+        <summary>Does it work without Railway?</summary>
+        <p>Yes. Docker Compose is included. You can deploy on Hetzner, DigitalOcean, AWS, Vultr, or any VPS. Railway is recommended because it's the fastest path (~30 minutes vs ~2 hours).</p>
+      </details>
+      <details>
+        <summary>Can my data leak to Anthropic / OpenAI / anyone?</summary>
+        <p>Your data goes to whichever LLM provider you configure (Anthropic by default). Anthropic's API does not train on data from API calls. All operational data (CRM, customer records, financials) stays in your own Postgres on your own Railway. No Xcerebro server in the loop. We literally don't have access to your data.</p>
+      </details>
+      <details>
+        <summary>I'm a real estate operator. Is this overkill?</summary>
+        <p>It's the opposite — Xcerebro was built by an active wholesaler. The REI pod (10 specialist agents) covers wholesale acquisitions, dispo, subject-to, creative finance, cold-call QA, market comps, rehab estimates, foreclosure tracking, title research, and REI marketing. If you're doing 5+ deals/year, this earns its cost in 1–2 months of saved manual work.</p>
+      </details>
+      <details>
+        <summary>How does Custom Install pricing work? Is it really invoiced?</summary>
+        <p>Yes. After our discovery call, we agree on scope and price (1 agent = $3K, 5 = $10K, etc.). You get an invoice via wire transfer or invoicing portal — no Stripe checkout, no recurring billing. Pay the deposit, build kicks off. Pay the balance on completion. Clean and simple.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="final-cta">
+  <div class="container">
+    <h2>Pick your track. Deploy your workforce.</h2>
+    <p class="section-sub">Operators are processing 10–50x more work in their businesses without hiring. The infrastructure has been productized. The only question is which path fits you.</p>
+    <div class="final-cta-group">
+      <a href="https://skool.com/aicheatcodes" target="_blank" class="btn-primary">Subscribe to VIP →</a>
+      <a href="#custom-contact" class="btn-secondary">Book Custom Install call →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="#" class="brand">
+          <div class="logo">X</div>
+          <div class="brand-name">XCEREBRO</div>
+        </a>
+        <p class="footer-brand">
+          Built by Quentin Flores · Operator-first · San Antonio, TX · Helping operators scale without hiring since 2024.
+        </p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#whats-new">What's New</a>
+        <a href="#inside">Features</a>
+        <a href="#tracks">Get Started</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <a href="https://skool.com/aicheatcodes" target="_blank">Skool VIP</a>
+        <a href="https://github.com/xcerebroai" target="_blank">GitHub</a>
+        <a href="https://instagram.com/qf_xcerebro" target="_blank">Instagram</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="/license.html">License</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      © 2026 Xcerebro · Just Jarvis LLC · Honestly Nevermind LLC · All rights reserved.
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

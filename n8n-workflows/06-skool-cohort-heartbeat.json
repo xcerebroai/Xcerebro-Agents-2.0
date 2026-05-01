@@ -1,0 +1,67 @@
+{
+  "name": "Xcerebro 2.0 — Skool Cohort Heartbeat",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 17 * * *" }
+          ]
+        }
+      },
+      "id": "trigger-cron",
+      "name": "Daily 5pm Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AGENT_RUNTIME_URL}}/agents/auto-customer-support/invoke",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{$env.AGENT_RUNTIME_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"task\": \"Check Skool cohort engagement for the past 24 hours. Identify: (1) members who posted, (2) members with NO activity in 7+ days (at-risk), (3) members who hit a milestone worth celebrating, (4) any unanswered support questions. Report back with 3-5 specific action items for the operator. Brief output (under 200 words).\",\n  \"context\": {\n    \"skool_group_url\": \"{{$env.SKOOL_GROUP_URL}}\",\n    \"date\": \"{{$now.toISOString().slice(0,10)}}\"\n  },\n  \"require_approval\": false\n}",
+        "options": { "timeout": 120000 },
+        "method": "POST"
+      },
+      "id": "support-check",
+      "name": "Support Agent Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "channel": "={{$env.SLACK_NOTIFICATIONS_CHANNEL_ID}}",
+        "text": "=💬 *Skool Cohort Heartbeat — {{$now.format('MMM D')}}*\n\n{{$json.result}}",
+        "otherOptions": { "mrkdwn": true }
+      },
+      "id": "post-slack",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Daily 5pm Trigger": {
+      "main": [[{ "node": "Support Agent Check", "type": "main", "index": 0 }]]
+    },
+    "Support Agent Check": {
+      "main": [[{ "node": "Post to Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Chicago", "saveDataErrorExecution": "all" },
+  "tags": [{ "name": "xcerebro" }, { "name": "skool" }, { "name": "community" }],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

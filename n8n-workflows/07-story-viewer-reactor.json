@@ -1,0 +1,116 @@
+{
+  "name": "Xcerebro 2.0 — Instagram Story Viewer Reactor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "story-reply",
+        "options": { "rawBody": false },
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-story",
+      "name": "Story Reply Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Classify the intent of the story reply\nconst reply = $input.first().json.body.text || '';\nconst replyLower = reply.toLowerCase();\n\nlet intent = 'neutral';\nlet priority = 'low';\n\n// High intent indicators\nif (replyLower.match(/how (much|do i|can i)|interested|sign me up|tell me more|let'?s do this|how does (this|it) work/)) {\n  intent = 'buying_signal';\n  priority = 'high';\n} else if (replyLower.match(/love (this|that|it)|so good|amazing|genius|💯|🔥/)) {\n  intent = 'supportive';\n  priority = 'medium';\n} else if (replyLower.match(/scam|fake|bs|too good to be true|not buying it/)) {\n  intent = 'skeptical';\n  priority = 'medium';\n} else if (replyLower.match(/question|wondering|curious|what about/)) {\n  intent = 'curious';\n  priority = 'medium';\n}\n\nreturn [{\n  json: {\n    reply_text: reply,\n    username: $input.first().json.body.username,\n    story_id: $input.first().json.body.story_id,\n    intent,\n    priority\n  }\n}];"
+      },
+      "id": "classify-intent",
+      "name": "Classify Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{$json.priority}}",
+              "rightValue": "high",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-priority",
+      "name": "High Priority?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AGENT_RUNTIME_URL}}/agents/auto-dm-agent/invoke",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{$env.AGENT_RUNTIME_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"task\": \"High-intent story reply just came in from @{{$json.username}}. They said: '{{$json.reply_text}}'. Draft a warm, qualifying DM that acknowledges their interest and asks ONE question to qualify them. Do not pitch.\",\n  \"context\": {\n    \"username\": \"{{$json.username}}\",\n    \"reply_text\": \"{{$json.reply_text}}\",\n    \"intent\": \"{{$json.intent}}\",\n    \"story_id\": \"{{$json.story_id}}\"\n  },\n  \"require_approval\": true\n}",
+        "options": { "timeout": 60000 },
+        "method": "POST"
+      },
+      "id": "dm-agent",
+      "name": "DM Agent (qualify)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "channel": "={{$env.SLACK_APPROVAL_CHANNEL_ID}}",
+        "text": "=🔥 *High-intent story reply from @{{$node[\"Classify Intent\"].json.username}}*\n\n_{{$node[\"Classify Intent\"].json.reply_text}}_\n\nDraft DM is in the approval queue.",
+        "otherOptions": { "mrkdwn": true }
+      },
+      "id": "alert-slack",
+      "name": "Alert Operator",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"received\": true}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 400]
+    }
+  ],
+  "connections": {
+    "Story Reply Webhook": {
+      "main": [[{ "node": "Classify Intent", "type": "main", "index": 0 }, { "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "Classify Intent": {
+      "main": [[{ "node": "High Priority?", "type": "main", "index": 0 }]]
+    },
+    "High Priority?": {
+      "main": [
+        [{ "node": "DM Agent (qualify)", "type": "main", "index": 0 }]
+      ]
+    },
+    "DM Agent (qualify)": {
+      "main": [[{ "node": "Alert Operator", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Chicago", "saveDataErrorExecution": "all" },
+  "tags": [{ "name": "xcerebro" }, { "name": "instagram" }, { "name": "leads" }],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

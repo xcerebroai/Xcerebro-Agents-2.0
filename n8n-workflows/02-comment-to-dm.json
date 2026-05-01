@@ -1,0 +1,184 @@
+{
+  "name": "Xcerebro 2.0 — Comment-to-DM Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "comment-trigger",
+        "options": {
+          "rawBody": false
+        },
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-comment",
+      "name": "Comment Webhook (from ManyChat)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "comment-trigger-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{$json.body.comment_text}}",
+              "rightValue": "AI",
+              "operator": {
+                "type": "string",
+                "operation": "containsIgnoreCase"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "check-keyword",
+      "name": "Check for Trigger Keyword",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AGENT_RUNTIME_URL}}/agents/auto-dm-agent/invoke",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.AGENT_RUNTIME_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"task\": \"New comment with keyword 'AI' from {{$json.body.username}}. Send the AI Workforce lead magnet via DM. Use the standard delivery message: warm intro + link + soft follow-up question.\",\n  \"context\": {\n    \"comment_text\": \"{{$json.body.comment_text}}\",\n    \"username\": \"{{$json.body.username}}\",\n    \"post_id\": \"{{$json.body.post_id}}\",\n    \"timestamp\": \"{{$now.toISOString()}}\",\n    \"lead_magnet\": \"ai-workforce-guide\"\n  },\n  \"require_approval\": true\n}",
+        "options": {
+          "timeout": 60000
+        },
+        "method": "POST"
+      },
+      "id": "invoke-dm-agent",
+      "name": "Invoke DM Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.GHL_BASE_URL}}/contacts/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.GHL_API_KEY}}"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"locationId\": \"{{$env.GHL_LOCATION_ID}}\",\n  \"firstName\": \"{{$json.body.username}}\",\n  \"source\": \"Instagram Comment AI\",\n  \"tags\": [\"ig-comment-ai\", \"lead-magnet-ai-workforce\"],\n  \"customField\": {\n    \"trigger_post_id\": \"{{$json.body.post_id}}\",\n    \"comment_text\": \"{{$json.body.comment_text}}\"\n  }\n}",
+        "method": "POST",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "create-ghl-contact",
+      "name": "Create GHL Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"received\",\n  \"invocation_id\": \"{{$json.invocation_id}}\",\n  \"approval_pending\": {{$json.requires_approval}}\n}"
+      },
+      "id": "respond",
+      "name": "Respond to ManyChat",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Comment Webhook (from ManyChat)": {
+      "main": [
+        [
+          {
+            "node": "Check for Trigger Keyword",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Trigger Keyword": {
+      "main": [
+        [
+          {
+            "node": "Invoke DM Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoke DM Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to ManyChat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago",
+    "saveDataErrorExecution": "all"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "xcerebro"
+    },
+    {
+      "name": "leads"
+    }
+  ],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

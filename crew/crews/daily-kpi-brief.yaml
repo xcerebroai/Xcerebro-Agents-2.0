@@ -1,0 +1,80 @@
+---
+# ============================================================
+# CREW: DAILY KPI BRIEF
+# ============================================================
+# The simplest autonomous flow. Runs every morning at 6am.
+# CFO pulls revenue numbers, CMO summarizes content metrics,
+# CEO synthesizes the brief, posts to operator's Slack.
+#
+# Proof-of-life flow. First thing buyers activate after deploy.
+# ============================================================
+
+id: daily-kpi-brief
+name: "Daily KPI Brief"
+description: >
+  Every morning at 6am local time, this crew runs to summarize the
+  business state and surface the day's priorities. Output lands in
+  Slack before the operator wakes up.
+
+triggers_for_workflows:
+  - daily-kpi-brief  # n8n workflow that triggers this
+  - morning-brief
+
+# Members of this crew (must reference loaded agent IDs)
+members:
+  - agent_id: auto-cfo
+    role: "Pull revenue, expenses, and cash flow for the last 24 hours and 7 days"
+    can_delegate: false
+  - agent_id: auto-cmo
+    role: "Pull content performance for the last 24 hours: top post, worst post, comment volume, DM volume"
+    can_delegate: false
+  - agent_id: auto-sales-manager
+    role: "Pull pipeline state: new leads, calls booked, calls completed, deals closed"
+    can_delegate: false
+  - agent_id: auto-ceo
+    role: "Synthesize all three reports into a strategic brief with 1-3 priorities for today"
+    can_delegate: true
+
+# Whether to run hierarchically (CEO directs) or sequentially (chain)
+hierarchical: false
+
+# Tasks (run sequentially in this order)
+tasks:
+  - id: cfo_pull
+    agent_id: auto-cfo
+    description: >
+      Pull revenue, expenses, and cash flow data for the last 24 hours and
+      the last 7 days. Format as a concise summary: 3-4 bullet points max.
+      Flag any anomalies (refunds, failed payments, unusual spend).
+    expected_output: "A concise CFO snapshot in 3-4 bullet points."
+
+  - id: cmo_pull
+    agent_id: auto-cmo
+    description: >
+      Pull content performance from the last 24 hours: top-performing post,
+      worst-performing post, total reach, comment volume, DM volume. Identify
+      one pattern worth amplifying or killing.
+    expected_output: "A concise CMO snapshot with one actionable insight."
+
+  - id: sales_pull
+    agent_id: auto-sales-manager
+    description: >
+      Pull pipeline state: new leads in the last 24h, calls booked,
+      calls completed, deals closed. Flag any hot leads that need
+      immediate attention. Identify the bottleneck stage.
+    expected_output: "A concise Sales Manager snapshot with hot lead flags."
+
+  - id: ceo_synthesize
+    agent_id: auto-ceo
+    description: >
+      Synthesize the CFO, CMO, and Sales Manager reports into ONE brief
+      strategic narrative. Identify the bottleneck. Recommend 1-3 priorities
+      for the operator today. Keep total output under 250 words.
+      Format for Slack readability with section headers.
+    expected_output: "A strategic morning brief, formatted for Slack, under 250 words."
+
+# Output destination
+output:
+  destination: slack
+  channel: "{SLACK_NOTIFICATIONS_CHANNEL_ID}"
+  format: markdown

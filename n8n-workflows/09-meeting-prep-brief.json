@@ -1,0 +1,115 @@
+{
+  "name": "Xcerebro 2.0 — Meeting Prep Brief",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "minutes", "minutesInterval": 15 }
+          ]
+        }
+      },
+      "id": "trigger-cron",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list"
+        },
+        "timeMin": "={{$now.toISO()}}",
+        "timeMax": "={{$now.plus({minutes: 30}).toISO()}}",
+        "options": {
+          "singleEvents": true,
+          "orderBy": "startTime"
+        }
+      },
+      "id": "get-upcoming",
+      "name": "Get Upcoming Events (30min window)",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{$json.attendees ? $json.attendees.length : 0}}",
+              "rightValue": "1",
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-meetings",
+      "name": "Filter to Real Meetings",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.AGENT_RUNTIME_URL}}/agents/auto-executive-assistant/invoke",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{$env.AGENT_RUNTIME_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"task\": \"Build a meeting prep brief for an upcoming call. Pull context on: who's attending, recent communications with them, the meeting purpose, and 3-5 key talking points. Brief output (under 200 words). Format for Slack readability.\",\n  \"context\": {\n    \"meeting_title\": \"{{$json.summary}}\",\n    \"meeting_time\": \"{{$json.start.dateTime}}\",\n    \"attendees\": {{ JSON.stringify($json.attendees || []) }},\n    \"description\": \"{{$json.description || ''}}\"\n  },\n  \"require_approval\": false\n}",
+        "options": { "timeout": 120000 },
+        "method": "POST"
+      },
+      "id": "ea-brief",
+      "name": "EA Prep Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "channel": "={{$env.SLACK_NOTIFICATIONS_CHANNEL_ID}}",
+        "text": "=⏰ *Meeting in 30 min: {{$node[\"Get Upcoming Events (30min window)\"].json.summary}}*\n\n{{$json.result}}",
+        "otherOptions": { "mrkdwn": true }
+      },
+      "id": "post-slack",
+      "name": "Post Brief to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [[{ "node": "Get Upcoming Events (30min window)", "type": "main", "index": 0 }]]
+    },
+    "Get Upcoming Events (30min window)": {
+      "main": [[{ "node": "Filter to Real Meetings", "type": "main", "index": 0 }]]
+    },
+    "Filter to Real Meetings": {
+      "main": [[{ "node": "EA Prep Brief", "type": "main", "index": 0 }]]
+    },
+    "EA Prep Brief": {
+      "main": [[{ "node": "Post Brief to Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "America/Chicago", "saveDataErrorExecution": "all" },
+  "tags": [{ "name": "xcerebro" }, { "name": "calendar" }, { "name": "ea" }],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

@@ -1,0 +1,76 @@
+# ============================================================
+# XCEREBRO 2.0 — .gitignore
+# ============================================================
+# Critical: NEVER commit .env or any file with credentials.
+# ============================================================
+
+# Environment files (contain API keys)
+.env
+.env.local
+.env.production
+.env.*.local
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node (if you add any JS tools later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Database
+*.sqlite
+*.db
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Local docker volumes (when testing)
+postgres_data/
+redis_data/
+n8n_data/
+dify_storage/
+weaviate_data/
+postiz_uploads/
+
+# Railway local config (if any)
+.railway/
+
+# Secrets — extra safety
+*.pem
+*.key
+*credentials*
+*secrets*
+
+# Operator-specific overrides (buyers customize these)
+agents/tier-a/custom/
+agents/tier-b/custom/
+n8n-workflows/custom/
+crew/crews/custom/

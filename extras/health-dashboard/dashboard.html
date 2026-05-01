@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Xcerebro 2.0 — Operator Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0A0A0A;
+    color: #E5E7EB;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+  header {
+    background: linear-gradient(135deg, #0F172A 0%, #1F2937 100%);
+    border-bottom: 1px solid #1F2937;
+    padding: 20px 32px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+  }
+  .header-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #3B82F6, #60A5FA);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: #0A0A0A;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+  }
+  .brand-text { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
+  .brand-sub { font-size: 12px; color: #6B7280; margin-top: -2px; }
+  .header-controls { display: flex; gap: 12px; align-items: center; }
+  .runtime-input {
+    background: #0A0A0A;
+    border: 1px solid #1F2937;
+    border-radius: 6px;
+    color: #E5E7EB;
+    padding: 8px 14px;
+    font-size: 13px;
+    width: 280px;
+    font-family: inherit;
+  }
+  .runtime-input:focus {
+    outline: none;
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  .btn {
+    background: #3B82F6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #2563EB; }
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid #1F2937;
+  }
+  .btn-secondary:hover { background: #1F2937; }
+  main { max-width: 1400px; margin: 0 auto; padding: 32px; }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .kpi-card {
+    background: #1F2937;
+    border: 1px solid #1F2937;
+    border-radius: 10px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: #3B82F6; }
+  .kpi-label {
+    color: #6B7280;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #E5E7EB;
+    line-height: 1;
+  }
+  .kpi-sub {
+    font-size: 12px;
+    color: #6B7280;
+    margin-top: 8px;
+  }
+  .kpi-good { color: #10B981; }
+  .kpi-warn { color: #F59E0B; }
+  .kpi-bad { color: #EF4444; }
+  .section {
+    background: #1F2937;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-title-text { display: flex; align-items: center; gap: 10px; }
+  .live-dot {
+    width: 8px; height: 8px;
+    background: #10B981;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    color: #6B7280;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 500;
+    padding: 12px 16px;
+    border-bottom: 1px solid #1F2937;
+  }
+  td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(31, 41, 55, 0.5);
+    font-size: 14px;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(59, 130, 246, 0.05); }
+  .status-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .status-online {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+  }
+  .status-offline {
+    background: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+  }
+  .status-pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: #F59E0B;
+  }
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .agent-card {
+    background: #0A0A0A;
+    border: 1px solid #1F2937;
+    border-radius: 8px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .agent-card:hover {
+    border-color: #3B82F6;
+    transform: translateY(-1px);
+  }
+  .agent-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #E5E7EB;
+    margin-bottom: 4px;
+  }
+  .agent-meta {
+    font-size: 11px;
+    color: #6B7280;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: #6B7280;
+  }
+  .empty-state h3 { color: #E5E7EB; margin-bottom: 8px; }
+  .empty-state code {
+    background: #0A0A0A;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #60A5FA;
+    font-size: 13px;
+  }
+  .error-banner {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #EF4444;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  footer {
+    text-align: center;
+    color: #6B7280;
+    font-size: 12px;
+    padding: 32px;
+  }
+  .last-updated {
+    color: #6B7280;
+    font-size: 11px;
+    font-weight: 400;
+    margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="logo">X</div>
+      <div>
+        <div class="brand-text">XCEREBRO</div>
+        <div class="brand-sub">Operator Dashboard</div>
+      </div>
+    </div>
+    <div class="header-controls">
+      <input
+        type="text"
+        id="runtimeUrl"
+        class="runtime-input"
+        placeholder="https://your-runtime.up.railway.app"
+      />
+      <button class="btn" onclick="connectRuntime()">Connect</button>
+      <button class="btn btn-secondary" onclick="refreshAll()">↻ Refresh</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="errorBanner" class="error-banner" style="display: none;"></div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Runtime Status</div>
+      <div class="kpi-value" id="kpi-status">—</div>
+      <div class="kpi-sub" id="kpi-status-sub">Not connected</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Agents Loaded</div>
+      <div class="kpi-value" id="kpi-agents">—</div>
+      <div class="kpi-sub" id="kpi-agents-sub">Tier A + Tier B</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Executions Today</div>
+      <div class="kpi-value" id="kpi-executions">—</div>
+      <div class="kpi-sub" id="kpi-executions-sub">All workflows</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pending Approvals</div>
+      <div class="kpi-value" id="kpi-approvals">—</div>
+      <div class="kpi-sub" id="kpi-approvals-sub">Waiting on you</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">LLM Cost Today</div>
+      <div class="kpi-value" id="kpi-cost">—</div>
+      <div class="kpi-sub" id="kpi-cost-sub">USD estimate</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      <span class="section-title-text">
+        <span class="live-dot"></span>
+        Recent Executions
+      </span>
+      <span class="last-updated" id="execUpdated"></span>
+    </div>
+    <div id="executionsBody">
+      <div class="empty-state">
+        <h3>Connect your runtime to see executions</h3>
+        <p>Enter your Railway URL above (e.g., <code>https://xcerebro-2-0-production.up.railway.app</code>) and click Connect.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">
+      <span class="section-title-text">All Agents</span>
+      <span class="last-updated" id="agentsUpdated"></span>
+    </div>
+    <div id="agentsBody">
+      <div class="empty-state">
+        <p>Connect your runtime to see your 92 autonomous agents.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Xcerebro 2.0 — Operator Dashboard · v1.0
+</footer>
+
+<script>
+  let RUNTIME_URL = localStorage.getItem('xcerebro_runtime_url') || '';
+  let refreshInterval = null;
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    if (RUNTIME_URL) {
+      document.getElementById('runtimeUrl').value = RUNTIME_URL;
+      connectRuntime();
+    }
+  });
+
+  function showError(msg) {
+    const banner = document.getElementById('errorBanner');
+    banner.textContent = msg;
+    banner.style.display = 'block';
+  }
+
+  function clearError() {
+    document.getElementById('errorBanner').style.display = 'none';
+  }
+
+  function connectRuntime() {
+    const url = document.getElementById('runtimeUrl').value.trim().replace(/\/$/, '');
+    if (!url) {
+      showError('Enter your runtime URL first');
+      return;
+    }
+    RUNTIME_URL = url;
+    localStorage.setItem('xcerebro_runtime_url', RUNTIME_URL);
+    clearError();
+    refreshAll();
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(refreshAll, 30000);
+  }
+
+  function refreshAll() {
+    fetchHealth();
+    fetchAgents();
+    fetchExecutions();
+    fetchApprovals();
+    fetchCostEstimate();
+  }
+
+  async function fetchHealth() {
+    try {
+      const res = await fetch(`${RUNTIME_URL}/health`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      document.getElementById('kpi-status').textContent = '🟢';
+      document.getElementById('kpi-status').className = 'kpi-value kpi-good';
+      document.getElementById('kpi-status-sub').textContent =
+        data.uptime ? `Up ${formatUptime(data.uptime)}` : 'Online';
+    } catch (e) {
+      document.getElementById('kpi-status').textContent = '🔴';
+      document.getElementById('kpi-status').className = 'kpi-value kpi-bad';
+      document.getElementById('kpi-status-sub').textContent = 'Cannot reach runtime';
+      showError(`Cannot reach runtime: ${e.message}. Check the URL and that the runtime is deployed.`);
+    }
+  }
+
+  async function fetchAgents() {
+    try {
+      const res = await fetch(`${RUNTIME_URL}/agents`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const agents = await res.json();
+      document.getElementById('kpi-agents').textContent = agents.length || 0;
+      const tierA = agents.filter(a => a.tier === 'A').length;
+      const tierB = agents.filter(a => a.tier === 'B').length;
+      document.getElementById('kpi-agents-sub').textContent = `${tierA} Tier A · ${tierB} Tier B`;
+      renderAgents(agents);
+      document.getElementById('agentsUpdated').textContent = `Updated ${formatTime(new Date())}`;
+    } catch (e) {
+      document.getElementById('kpi-agents').textContent = '?';
+      console.error('Agents fetch failed:', e);
+    }
+  }
+
+  async function fetchExecutions() {
+    try {
+      const res = await fetch(`${RUNTIME_URL}/audit?limit=20`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const executions = await res.json();
+      const today = new Date().toISOString().split('T')[0];
+      const todayCount = executions.filter(e => e.timestamp?.startsWith(today)).length;
+      document.getElementById('kpi-executions').textContent = todayCount;
+      const lastHour = executions.filter(e => {
+        const t = new Date(e.timestamp);
+        return (Date.now() - t.getTime()) < 3600000;
+      }).length;
+      document.getElementById('kpi-executions-sub').textContent = `${lastHour} in last hour`;
+      renderExecutions(executions);
+      document.getElementById('execUpdated').textContent = `Updated ${formatTime(new Date())}`;
+    } catch (e) {
+      document.getElementById('kpi-executions').textContent = '?';
+      console.error('Executions fetch failed:', e);
+    }
+  }
+
+  async function fetchApprovals() {
+    try {
+      const res = await fetch(`${RUNTIME_URL}/approvals?status=pending`);
+      if (!res.ok) {
+        // If endpoint doesn't exist yet, gracefully degrade
+        document.getElementById('kpi-approvals').textContent = '—';
+        document.getElementById('kpi-approvals-sub').textContent = 'Endpoint not available';
+        return;
+      }
+      const data = await res.json();
+      const count = Array.isArray(data) ? data.length : (data.count || 0);
+      document.getElementById('kpi-approvals').textContent = count;
+      document.getElementById('kpi-approvals').className =
+        count > 5 ? 'kpi-value kpi-warn' : 'kpi-value';
+      document.getElementById('kpi-approvals-sub').textContent =
+        count === 0 ? 'All clear' : count > 5 ? 'Backlog forming' : 'Check Slack';
+    } catch (e) {
+      document.getElementById('kpi-approvals').textContent = '—';
+    }
+  }
+
+  async function fetchCostEstimate() {
+    try {
+      const res = await fetch(`${RUNTIME_URL}/audit?limit=200`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const executions = await res.json();
+      const today = new Date().toISOString().split('T')[0];
+      const todaysExecs = executions.filter(e => e.timestamp?.startsWith(today));
+
+      // Estimate: average ~$0.015 per agent invocation on Sonnet 4
+      // (rough — replace with real token-based calc when available)
+      const estimate = todaysExecs.length * 0.015;
+      document.getElementById('kpi-cost').textContent = `$${estimate.toFixed(2)}`;
+      document.getElementById('kpi-cost').className =
+        estimate > 5 ? 'kpi-value kpi-warn' : 'kpi-value';
+      document.getElementById('kpi-cost-sub').textContent =
+        `~$${(estimate * 30).toFixed(0)} projected monthly`;
+    } catch (e) {
+      document.getElementById('kpi-cost').textContent = '—';
+    }
+  }
+
+  function renderExecutions(executions) {
+    const body = document.getElementById('executionsBody');
+    if (!executions || executions.length === 0) {
+      body.innerHTML = '<div class="empty-state"><p>No executions yet. Activate a workflow in n8n to start.</p></div>';
+      return;
+    }
+
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Agent</th>
+            <th>Action</th>
+            <th>Status</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    executions.slice(0, 15).forEach(ex => {
+      const time = ex.timestamp ? new Date(ex.timestamp).toLocaleString() : '—';
+      const status = ex.status || 'unknown';
+      const statusClass =
+        status === 'success' ? 'status-online' :
+        status === 'pending' ? 'status-pending' : 'status-offline';
+      const duration = ex.duration_ms ? `${ex.duration_ms}ms` : '—';
+      html += `
+        <tr>
+          <td style="color: #6B7280; font-size: 12px;">${time}</td>
+          <td style="font-weight: 500;">${escapeHtml(ex.agent_id || '—')}</td>
+          <td style="color: #9CA3AF; font-size: 13px;">${escapeHtml(ex.action || '—')}</td>
+          <td><span class="status-pill ${statusClass}">${status}</span></td>
+          <td style="color: #6B7280; font-size: 12px;">${duration}</td>
+        </tr>
+      `;
+    });
+    html += '</tbody></table>';
+    body.innerHTML = html;
+  }
+
+  function renderAgents(agents) {
+    const body = document.getElementById('agentsBody');
+    if (!agents || agents.length === 0) {
+      body.innerHTML = '<div class="empty-state"><p>No agents loaded yet.</p></div>';
+      return;
+    }
+
+    let html = '<div class="agent-grid">';
+    agents.forEach(a => {
+      const tier = a.tier || '?';
+      const status = a.last_invoked_at ? 'status-online' : 'status-pending';
+      const statusText = a.last_invoked_at ? 'active' : 'idle';
+      html += `
+        <div class="agent-card">
+          <div class="agent-name">${escapeHtml(a.name || a.id)}</div>
+          <div class="agent-meta">
+            <span>Tier ${tier} · ${escapeHtml(a.function || 'general')}</span>
+            <span class="status-pill ${status}">${statusText}</span>
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+    body.innerHTML = html;
+  }
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatTime(date) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function formatUptime(seconds) {
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+    if (seconds < 86400) return `${Math.round(seconds / 3600)}h`;
+    return `${Math.round(seconds / 86400)}d`;
+  }
+</script>
+</body>
+</html>
