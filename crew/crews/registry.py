@@ -13,9 +13,7 @@ from typing import Any, Optional
 import yaml
 from loguru import logger
 
-from crewai import Agent, Crew, Task, Process
-from langchain_anthropic import ChatAnthropic
-from langchain_openai import ChatOpenAI
+from crewai import Agent, Crew, Task, Process, LLM
 
 from config import settings
 
@@ -239,14 +237,26 @@ class CrewRegistry:
             )
             tasks.append(cw_task)
 
-        process = Process.hierarchical if crew_def.get("hierarchical") else Process.sequential
-
-        crew = Crew(
-            agents=agents,
-            tasks=tasks,
-            process=process,
-            verbose=True,
-        )
+        # Build manager LLM for hierarchical processes
+        if crew_def.get("hierarchical"):
+            process = Process.hierarchical
+            # Hierarchical crews need a manager LLM
+            manager_llm = self._build_llm({})  # Use defaults
+            crew = Crew(
+                agents=agents,
+                tasks=tasks,
+                process=process,
+                manager_llm=manager_llm,
+                verbose=True,
+            )
+        else:
+            process = Process.sequential
+            crew = Crew(
+                agents=agents,
+                tasks=tasks,
+                process=process,
+                verbose=True,
+            )
 
         result = crew.kickoff(inputs=inputs)
         return str(result)
@@ -264,7 +274,10 @@ class CrewRegistry:
     # ---------- LLM BUILDER ----------
 
     def _build_llm(self, agent_def: dict):
-        """Build the LLM client based on agent preferences + global defaults."""
+        """
+        Build the LLM client based on agent preferences + global defaults.
+        Uses crewai.LLM (which wraps litellm) — required for CrewAI 0.175+.
+        """
         provider = agent_def.get("llm_provider", settings.default_llm_provider)
         model = agent_def.get("llm_model", settings.default_llm_model)
 
@@ -282,14 +295,15 @@ class CrewRegistry:
             elif provider == "openai":
                 model = f"openai/{model}"
 
+        # Step 3: Build LLM using crewai.LLM (compatible with CrewAI 0.175+)
         if provider == "anthropic":
-            return ChatAnthropic(
+            return LLM(
                 model=model,
                 api_key=settings.anthropic_api_key,
                 max_tokens=settings.max_tokens_per_task,
             )
         elif provider == "openai":
-            return ChatOpenAI(
+            return LLM(
                 model=model,
                 api_key=settings.openai_api_key,
                 max_tokens=settings.max_tokens_per_task,
