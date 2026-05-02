@@ -20,6 +20,16 @@ from langchain_openai import ChatOpenAI
 from config import settings
 
 
+# Map shorthand model names to actual Anthropic API identifiers (with date suffix)
+MODEL_ALIASES = {
+    "claude-sonnet-4-5": "claude-sonnet-4-5-20250929",
+    "claude-haiku-4-5": "claude-haiku-4-5-20251001",
+    "claude-opus-4-1": "claude-opus-4-1-20250805",
+    "claude-sonnet-4": "claude-sonnet-4-20250514",
+    "claude-opus-4": "claude-opus-4-20250514",
+}
+
+
 class CrewRegistry:
     """Loads + indexes all agent and crew definitions."""
 
@@ -258,8 +268,13 @@ class CrewRegistry:
         provider = agent_def.get("llm_provider", settings.default_llm_provider)
         model = agent_def.get("llm_model", settings.default_llm_model)
 
-        # Auto-prefix model name if no provider prefix is present
-        # This fixes litellm errors when YAMLs use bare model names like "claude-sonnet-4-5"
+        # Step 1: Map shorthand model names to actual API model identifiers
+        # (e.g., "claude-sonnet-4-5" -> "claude-sonnet-4-5-20250929")
+        if model in MODEL_ALIASES:
+            model = MODEL_ALIASES[model]
+
+        # Step 2: Auto-prefix model name with provider if no prefix is present
+        # (litellm requires "anthropic/model-name" format)
         known_prefixes = ("anthropic/", "openai/", "azure/", "bedrock/", "vertex_ai/", "azure_ai/")
         if model and not any(model.startswith(p) for p in known_prefixes):
             if provider == "anthropic":
