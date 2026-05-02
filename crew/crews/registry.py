@@ -258,6 +258,15 @@ class CrewRegistry:
         provider = agent_def.get("llm_provider", settings.default_llm_provider)
         model = agent_def.get("llm_model", settings.default_llm_model)
 
+        # Auto-prefix model name if no provider prefix is present
+        # This fixes litellm errors when YAMLs use bare model names like "claude-sonnet-4-5"
+        known_prefixes = ("anthropic/", "openai/", "azure/", "bedrock/", "vertex_ai/", "azure_ai/")
+        if model and not any(model.startswith(p) for p in known_prefixes):
+            if provider == "anthropic":
+                model = f"anthropic/{model}"
+            elif provider == "openai":
+                model = f"openai/{model}"
+
         if provider == "anthropic":
             return ChatAnthropic(
                 model=model,
