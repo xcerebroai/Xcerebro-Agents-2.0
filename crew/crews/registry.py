@@ -296,17 +296,16 @@ class CrewRegistry:
                 model = f"openai/{model}"
 
         # Step 3: Build LLM using crewai.LLM (compatible with CrewAI 0.175+)
+        # Note: max_tokens is NOT passed because crewai.LLM doesn't support it directly
         if provider == "anthropic":
             return LLM(
                 model=model,
                 api_key=settings.anthropic_api_key,
-                max_tokens=settings.max_tokens_per_task,
             )
         elif provider == "openai":
             return LLM(
                 model=model,
                 api_key=settings.openai_api_key,
-                max_tokens=settings.max_tokens_per_task,
             )
         else:
             raise ValueError(f"Unknown LLM provider: {provider}")
