@@ -50,7 +50,7 @@ class CrewRegistry:
                 self._load_agent_file(yaml_file, tier="b")
 
         # Load crew definitions
-        crews_dir = self.agents_path.parent / "crew" / "crews"
+        crews_dir = self.agents_path.parent / "crews"
         if crews_dir.exists():
             for yaml_file in crews_dir.glob("*.yaml"):
                 self._load_crew_file(yaml_file)
