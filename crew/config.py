@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     deepseek_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
     deepseek_base_url: str = "https://api.deepseek.com/v1"
-    default_llm_model: str = "claude-sonnet-4-5"
+    default_llm_model: str = "anthropic/claude-sonnet-4-5-20250929"
     default_llm_provider: str = "anthropic"
 
     # ---- Multi-Model Routing (v2.1+) ----
