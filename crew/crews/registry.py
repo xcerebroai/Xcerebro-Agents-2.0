@@ -179,7 +179,7 @@ class CrewRegistry:
             verbose=True,
         )
 
-        result = crew.kickoff(inputs=context)
+        result = await crew.kickoff_async(inputs=context)
         return str(result)
 
     async def run_crew(self, crew_id: str, inputs: dict) -> Any:
