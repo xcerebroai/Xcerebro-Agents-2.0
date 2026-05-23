@@ -261,37 +261,28 @@ class CrewRegistry:
 
     def _build_llm(self, agent_def: dict):
         """
-        Build the LLM client based on agent preferences + global defaults.
-        Uses crewai.LLM (which wraps litellm) — required for CrewAI 0.175+.
+        Build the LLM client routing through OpenRouter.
+        Uses crewai.LLM which leverages litellm natively.
         """
-        provider = agent_def.get("llm_provider", settings.default_llm_provider)
+        # Read the model name from agent definition or use the global default
         model = agent_def.get("llm_model", settings.default_llm_model)
 
-        # Step 1: Map shorthand model names to actual API model identifiers
-        # (e.g., "claude-sonnet-4-5" -> "claude-sonnet-4-5-20250929")
-        if model in MODEL_ALIASES:
-            model = MODEL_ALIASES[model]
+        # LiteLLM format for OpenRouter is always: openrouter/provider/model-name
+        if model and not model.startswith("openrouter/"):
+            model = f"openrouter/{model}"
 
-        # Step 2: Auto-prefix model name with provider if no prefix is present
-        # (litellm requires "anthropic/model-name" format)
-        known_prefixes = ("anthropic/", "openai/", "azure/", "bedrock/", "vertex_ai/", "azure_ai/")
-        if model and not any(model.startswith(p) for p in known_prefixes):
-            if provider == "anthropic":
-                model = f"anthropic/{model}"
-            elif provider == "openai":
-                model = f"openai/{model}"
+        # Get the OpenRouter API key from our environment configurations
+        # We try settings.openrouter_api_key first, otherwise fall back to direct os.getenv
+        import os
+        api_key = getattr(settings, "openrouter_api_key", None) or os.getenv("OPENROUTER_API_KEY")
 
-        # Step 3: Build LLM using crewai.LLM (compatible with CrewAI 0.175+)
-        # Note: max_tokens is NOT passed because crewai.LLM doesn't support it directly
-        if provider == "anthropic":
-            return LLM(
-                model=model,
-                api_key=settings.anthropic_api_key,
-            )
-        elif provider == "openai":
-            return LLM(
-                model=model,
-                api_key=settings.openai_api_key,
-            )
-        else:
-            raise ValueError(f"Unknown LLM provider: {provider}")
+        if not api_key:
+            raise ValueError("Missing OpenRouter API Key. Please ensure OPENROUTER_API_KEY is set in Railway.")
+
+        logger.info(f"Building OpenRouter LLM client for model: {model}")
+
+        return LLM(
+            model=model,
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+        )
