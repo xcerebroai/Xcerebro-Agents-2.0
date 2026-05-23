@@ -179,7 +179,7 @@ class CrewRegistry:
             verbose=True,
         )
 
-        result = await crew.kickoff_async(inputs=context)
+        result = crew.kickoff(inputs=context)
         return str(result)
 
     async def run_crew(self, crew_id: str, inputs: dict) -> Any:
@@ -244,7 +244,7 @@ class CrewRegistry:
                 verbose=True,
             )
 
-        result = await crew.kickoff_async(inputs=inputs)
+        result = crew.kickoff(inputs=inputs)
         return str(result)
 
     async def resume_after_approval(self, approval_record: dict) -> Any:
