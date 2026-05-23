@@ -3,8 +3,8 @@
 # ============================================================
 
 # Core agent framework
-crewai>=0.175.0
-crewai-tools>=0.55.0
+crewai==0.100.0
+crewai-tools==0.25.8
 
 # LangGraph for stateful workflows + human approval gates
 langgraph>=0.2.0
