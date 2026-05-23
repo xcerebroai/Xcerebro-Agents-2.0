@@ -18,13 +18,13 @@ from crewai import Agent, Crew, Task, Process, LLM
 from config import settings
 
 
-# Map shorthand model names to actual Anthropic API identifiers (with date suffix)
+# Map shorthand template model names to valid OpenRouter model IDs
 MODEL_ALIASES = {
-    "claude-sonnet-4-5": "claude-sonnet-4-5-20250929",
-    "claude-haiku-4-5": "claude-haiku-4-5-20251001",
-    "claude-opus-4-1": "claude-opus-4-1-20250805",
-    "claude-sonnet-4": "claude-sonnet-4-20250514",
-    "claude-opus-4": "claude-opus-4-20250514",
+    "claude-sonnet-4-5": "anthropic/claude-3.5-sonnet",
+    "claude-haiku-4-5": "anthropic/claude-3-haiku",
+    "claude-opus-4-1": "anthropic/claude-3-opus",
+    "claude-sonnet-4": "anthropic/claude-3.5-sonnet",
+    "claude-opus-4": "anthropic/claude-3-opus",
 }
 
 
