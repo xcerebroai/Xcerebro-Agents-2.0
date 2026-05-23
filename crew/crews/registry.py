@@ -267,12 +267,14 @@ class CrewRegistry:
         # Read the model name from agent definition or use the global default
         model = agent_def.get("llm_model", settings.default_llm_model)
 
+        # Apply the mapping alias if the agent is requesting an old placeholder string
+        if model in MODEL_ALIASES:
+            model = MODEL_ALIASES[model]
+
         # LiteLLM format for OpenRouter is always: openrouter/provider/model-name
         if model and not model.startswith("openrouter/"):
             model = f"openrouter/{model}"
 
-        # Get the OpenRouter API key from our environment configurations
-        # We try settings.openrouter_api_key first, otherwise fall back to direct os.getenv
         import os
         api_key = getattr(settings, "openrouter_api_key", None) or os.getenv("OPENROUTER_API_KEY")
 
