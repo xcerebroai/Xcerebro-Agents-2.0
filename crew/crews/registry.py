@@ -244,7 +244,7 @@ class CrewRegistry:
                 verbose=True,
             )
 
-        result = crew.kickoff(inputs=inputs)
+        result = await crew.kickoff_async(inputs=inputs)
         return str(result)
 
     async def resume_after_approval(self, approval_record: dict) -> Any:
