@@ -262,7 +262,8 @@ class CrewRegistry:
     def _build_llm(self, agent_def: dict):
         """
         Build the LLM client routing through OpenRouter.
-        Uses crewai.LLM which leverages litellm natively.
+        Uses crewai.LLM treating OpenRouter as an OpenAI-compatible endpoint
+        to ensure reliable string routing without prefix conflicts.
         """
         # Read the model name from agent definition or use the global default
         model = agent_def.get("llm_model", settings.default_llm_model)
@@ -271,13 +272,9 @@ class CrewRegistry:
         if model in MODEL_ALIASES:
             model = MODEL_ALIASES[model]
 
-        # LiteLLM routes cleanly to OpenRouter when the prefix is 'openrouter/'
-        # followed by the standard openrouter model identifier (e.g. 'anthropic/claude-3.5-sonnet')
+        # Explicitly remove any legacy prefixes if they managed to sneak in
         if model:
-            # Strip any accidental leading slash strings to prevent formatting corruption
-            model = model.lstrip("/")
-            if not model.startswith("openrouter/"):
-                model = f"openrouter/{model}"
+            model = model.replace("openrouter/", "")
 
         import os
         api_key = getattr(settings, "openrouter_api_key", None) or os.getenv("OPENROUTER_API_KEY")
@@ -285,10 +282,12 @@ class CrewRegistry:
         if not api_key:
             raise ValueError("Missing OpenRouter API Key. Please ensure OPENROUTER_API_KEY is set in Railway.")
 
-        logger.info(f"Building OpenRouter LLM client for model target: {model}")
+        logger.info(f"Building Clean OpenRouter Client. Target Model: {model}")
 
+        # By prefixing the model with 'openai/' but pointing the base_url to OpenRouter,
+        # we force LiteLLM to use standard OpenAI routing behavior, which OpenRouter natively accepts perfectly.
         return LLM(
-            model=model,
+            model=f"openai/{model}",
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1",
         )
