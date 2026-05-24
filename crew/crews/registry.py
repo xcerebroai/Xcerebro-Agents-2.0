@@ -271,10 +271,13 @@ class CrewRegistry:
         if model in MODEL_ALIASES:
             model = MODEL_ALIASES[model]
 
-        # Force the exact string convention LiteLLM requires for custom OpenRouter routers:
-        # It must start with 'openrouter/' followed immediately by the slug OpenRouter expects.
-        if model and not model.startswith("openrouter/"):
-            model = f"openrouter/{model}"
+        # LiteLLM routes cleanly to OpenRouter when the prefix is 'openrouter/'
+        # followed by the standard openrouter model identifier (e.g. 'anthropic/claude-3.5-sonnet')
+        if model:
+            # Strip any accidental leading slash strings to prevent formatting corruption
+            model = model.lstrip("/")
+            if not model.startswith("openrouter/"):
+                model = f"openrouter/{model}"
 
         import os
         api_key = getattr(settings, "openrouter_api_key", None) or os.getenv("OPENROUTER_API_KEY")
@@ -284,8 +287,6 @@ class CrewRegistry:
 
         logger.info(f"Building OpenRouter LLM client for model target: {model}")
 
-        # For older CrewAI/LiteLLM integrations routing through openrouter, 
-        # explicitly providing the provider name inside the object keeps endpoints happy.
         return LLM(
             model=model,
             api_key=api_key,
