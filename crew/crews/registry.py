@@ -18,13 +18,13 @@ from crewai import Agent, Crew, Task, Process, LLM
 from config import settings
 
 
-# Map shorthand template model names to valid canonical OpenRouter model strings
+# Map shorthand template model names to valid canonical live OpenRouter model targets
 MODEL_ALIASES = {
-    "claude-sonnet-4-5": "anthropic/claude-3.5-sonnet:beta",
-    "claude-haiku-4-5": "anthropic/claude-3.5-haiku",
-    "claude-opus-4-1": "anthropic/claude-3-opus",
-    "claude-sonnet-4": "anthropic/claude-3.5-sonnet-20241022",
-    "claude-opus-4": "anthropic/claude-3-opus",
+    "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
+    "claude-haiku-4-5": "anthropic/claude-haiku-4.5",
+    "claude-opus-4-1": "anthropic/claude-opus-4.5",
+    "claude-sonnet-4": "anthropic/claude-sonnet-latest",
+    "claude-opus-4": "anthropic/claude-opus-4.5",
 }
 
 
@@ -261,9 +261,7 @@ class CrewRegistry:
 
     def _build_llm(self, agent_def: dict):
         """
-        Build the LLM client routing through OpenRouter.
-        Uses crewai.LLM treating OpenRouter as an OpenAI-compatible endpoint
-        to ensure reliable string routing without prefix conflicts.
+        Build the LLM client routing natively through OpenRouter via CrewAI.
         """
         # Read the model name from agent definition or use the global default
         model = agent_def.get("llm_model", settings.default_llm_model)
@@ -272,7 +270,7 @@ class CrewRegistry:
         if model in MODEL_ALIASES:
             model = MODEL_ALIASES[model]
 
-        # Explicitly remove any legacy prefixes if they managed to sneak in
+        # Strip any accidental legacy prefixes to keep the parsing engine clean
         if model:
             model = model.replace("openrouter/", "")
 
@@ -282,12 +280,12 @@ class CrewRegistry:
         if not api_key:
             raise ValueError("Missing OpenRouter API Key. Please ensure OPENROUTER_API_KEY is set in Railway.")
 
-        logger.info(f"Building Clean OpenRouter Client. Target Model: {model}")
+        # Construct the native CrewAI model identifier format: openrouter/provider/model
+        native_model_string = f"openrouter/{model}"
+        logger.info(f"Building Native OpenRouter Connection. Target: {native_model_string}")
 
-        # By prefixing the model with 'openai/' but pointing the base_url to OpenRouter,
-        # we force LiteLLM to use standard OpenAI routing behavior, which OpenRouter natively accepts perfectly.
+        # CrewAI natively handles the base_urls and endpoint routing when prefixed with openrouter/
         return LLM(
-            model=f"openai/{model}",
+            model=native_model_string,
             api_key=api_key,
-            base_url="https://openrouter.ai/api/v1",
         )
