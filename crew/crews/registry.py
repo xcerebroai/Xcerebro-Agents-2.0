@@ -18,12 +18,12 @@ from crewai import Agent, Crew, Task, Process, LLM
 from config import settings
 
 
-# Map shorthand template model names to valid OpenRouter model targets
+# Map shorthand template model names to valid canonical OpenRouter model strings
 MODEL_ALIASES = {
-    "claude-sonnet-4-5": "anthropic/claude-3.5-sonnet",
-    "claude-haiku-4-5": "anthropic/claude-3-haiku",
+    "claude-sonnet-4-5": "anthropic/claude-3.5-sonnet:beta",
+    "claude-haiku-4-5": "anthropic/claude-3.5-haiku",
     "claude-opus-4-1": "anthropic/claude-3-opus",
-    "claude-sonnet-4": "anthropic/claude-3.5-sonnet",
+    "claude-sonnet-4": "anthropic/claude-3.5-sonnet-20241022",
     "claude-opus-4": "anthropic/claude-3-opus",
 }
 
