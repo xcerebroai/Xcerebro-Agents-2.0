@@ -18,7 +18,7 @@ from crewai import Agent, Crew, Task, Process, LLM
 from config import settings
 
 
-# Map shorthand template model names to valid OpenRouter model IDs
+# Map shorthand template model names to valid OpenRouter model targets
 MODEL_ALIASES = {
     "claude-sonnet-4-5": "anthropic/claude-3.5-sonnet",
     "claude-haiku-4-5": "anthropic/claude-3-haiku",
@@ -271,7 +271,8 @@ class CrewRegistry:
         if model in MODEL_ALIASES:
             model = MODEL_ALIASES[model]
 
-        # LiteLLM format for OpenRouter is always: openrouter/provider/model-name
+        # Force the exact string convention LiteLLM requires for custom OpenRouter routers:
+        # It must start with 'openrouter/' followed immediately by the slug OpenRouter expects.
         if model and not model.startswith("openrouter/"):
             model = f"openrouter/{model}"
 
@@ -281,8 +282,10 @@ class CrewRegistry:
         if not api_key:
             raise ValueError("Missing OpenRouter API Key. Please ensure OPENROUTER_API_KEY is set in Railway.")
 
-        logger.info(f"Building OpenRouter LLM client for model: {model}")
+        logger.info(f"Building OpenRouter LLM client for model target: {model}")
 
+        # For older CrewAI/LiteLLM integrations routing through openrouter, 
+        # explicitly providing the provider name inside the object keeps endpoints happy.
         return LLM(
             model=model,
             api_key=api_key,
