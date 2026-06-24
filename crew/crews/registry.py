@@ -125,7 +125,7 @@ class CrewRegistry:
 
     def _build_tools(self, agent_def: dict) -> list:
         """Instantiate tools declared in can_call_tools."""
-        tool_names: list[str] = agent_def.get("can_call_tools", [])
+        tool_names: list[str] = agent_def.get("permissions", {}).get("can_call_tools", [])
         if not tool_names:
             return []
 
@@ -177,6 +177,7 @@ class CrewRegistry:
             backstory=agent_def.get("backstory", ""),
             llm=llm,
             tools=tools,
+            function_calling_llm=llm,  # use Claude's native tool-call API, not ReAct text format
             verbose=True,
             allow_delegation=False,
         )
