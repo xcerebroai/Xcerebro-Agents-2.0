@@ -53,8 +53,6 @@ def _safe_request(method: str, url: str, **kwargs) -> dict:
 class ReadContactsInput(BaseModel):
     query: str = Field(default="", description="Search term (name, email, or phone)")
     limit: int = Field(default=20, description="Max contacts to return (1–100)")
-    sort_by: str = Field(default="dateUpdated", description="Sort field: dateUpdated or dateAdded")
-    sort_order: str = Field(default="desc", description="asc or desc")
 
 
 class GHLReadContactsTool(BaseTool):
@@ -66,13 +64,10 @@ class GHLReadContactsTool(BaseTool):
     )
     args_schema: Type[BaseModel] = ReadContactsInput
 
-    def _run(self, query: str = "", limit: int = 20,
-             sort_by: str = "dateUpdated", sort_order: str = "desc") -> str:
+    def _run(self, query: str = "", limit: int = 20) -> str:
         params = {
             "locationId": _location_id(),
             "limit": min(limit, 100),
-            "sortBy": sort_by,
-            "sortOrder": sort_order,
         }
         if query:
             params["query"] = query
