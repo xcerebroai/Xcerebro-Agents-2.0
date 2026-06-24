@@ -23,11 +23,12 @@ uvicorn[standard]>=0.32.0
 pydantic>=2.9.0
 pydantic-settings>=2.6.0
 
-# Database
+# Database + vector memory
 sqlalchemy>=2.0.36
 psycopg2-binary>=2.9.10
 alembic>=1.14.0
 redis>=5.2.0
+pgvector>=0.3.0
 
 # YAML for agent definitions
 pyyaml>=6.0.2

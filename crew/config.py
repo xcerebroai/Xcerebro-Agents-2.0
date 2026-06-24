@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     # ---- LLM Provider ----
     anthropic_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None  # used for LLM + embeddings
     deepseek_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
     deepseek_base_url: str = "https://api.deepseek.com/v1"

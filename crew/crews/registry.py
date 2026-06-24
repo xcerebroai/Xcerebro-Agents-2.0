@@ -3,9 +3,6 @@ Xcerebro 2.0 — Crew Registry
 
 Loads agent and crew definitions from YAML files in /agents/.
 Provides the orchestration interface for the FastAPI runtime.
-
-The registry is the single source of truth for which agents exist,
-which crews exist, and how they coordinate.
 """
 
 from pathlib import Path
@@ -16,15 +13,21 @@ from loguru import logger
 from crewai import Agent, Crew, Task, Process, LLM
 
 from config import settings
+from tools.ghl import get_ghl_tools
 
 
-# Map shorthand template model names to valid canonical live OpenRouter model targets
 MODEL_ALIASES = {
     "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
     "claude-haiku-4-5": "anthropic/claude-haiku-4.5",
     "claude-opus-4-1": "anthropic/claude-opus-4.5",
     "claude-sonnet-4": "anthropic/claude-sonnet-latest",
     "claude-opus-4": "anthropic/claude-opus-4.5",
+}
+
+# Maps YAML can_call_tools prefixes to tool loader functions.
+# Add new tool families here as they are implemented.
+TOOL_LOADERS = {
+    "ghl.": get_ghl_tools,
 }
 
 
@@ -35,67 +38,66 @@ class CrewRegistry:
         self.agents_path = Path(agents_path)
         self.agents: dict[str, dict] = {}
         self.crews: dict[str, dict] = {}
-        self.workflow_map: dict[str, str] = {}  # workflow_name -> crew_id
+        self.workflow_map: dict[str, str] = {}
+        self._memory = None  # MemoryManager, initialized lazily
 
-    # ---------- LOADING ----------
+    # ── memory ────────────────────────────────────────────────────────────────
+
+    def _get_memory(self):
+        """Lazy-init MemoryManager so import errors don't crash startup."""
+        if self._memory is None and settings.database_url:
+            try:
+                from tools.memory import MemoryManager
+                self._memory = MemoryManager(
+                    database_url=settings.database_url,
+                    openrouter_api_key=getattr(settings, "openrouter_api_key", ""),
+                )
+            except Exception as e:
+                logger.warning(f"MemoryManager init failed (degraded): {e}")
+        return self._memory
+
+    # ── loading ───────────────────────────────────────────────────────────────
 
     def load_all(self) -> None:
-        """Load every YAML file under agents/tier-a and agents/tier-b."""
         if not self.agents_path.exists():
             logger.warning(f"Agents path {self.agents_path} not found")
             return
 
-        # Load Tier A leadership agents
-        tier_a_dir = self.agents_path / "tier-a"
-        if tier_a_dir.exists():
-            for yaml_file in tier_a_dir.glob("*.yaml"):
-                self._load_agent_file(yaml_file, tier="a")
+        for yaml_file in (self.agents_path / "tier-a").glob("*.yaml"):
+            self._load_agent_file(yaml_file, tier="a")
+        for yaml_file in (self.agents_path / "tier-b").glob("*.yaml"):
+            self._load_agent_file(yaml_file, tier="b")
 
-        # Load Tier B specialist agents
-        tier_b_dir = self.agents_path / "tier-b"
-        if tier_b_dir.exists():
-            for yaml_file in tier_b_dir.glob("*.yaml"):
-                self._load_agent_file(yaml_file, tier="b")
-
-        # Load crew definitions
         crews_dir = self.agents_path.parent / "crews"
         if crews_dir.exists():
             for yaml_file in crews_dir.glob("*.yaml"):
                 self._load_crew_file(yaml_file)
 
-        logger.info(f"Registry loaded: {len(self.agents)} agents, "
-                    f"{len(self.crews)} crews")
+        logger.info(f"Registry loaded: {len(self.agents)} agents, {len(self.crews)} crews")
 
     def _load_agent_file(self, path: Path, tier: str) -> None:
-        """Load a single agent YAML."""
         try:
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             agent_id = data.get("id") or path.stem
             data["_tier"] = tier
             data["_path"] = str(path)
             self.agents[agent_id] = data
-            logger.debug(f"Loaded agent: {agent_id} (tier {tier})")
         except Exception as e:
             logger.error(f"Failed to load agent {path}: {e}")
 
     def _load_crew_file(self, path: Path) -> None:
-        """Load a crew definition YAML."""
         try:
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             crew_id = data.get("id") or path.stem
             self.crews[crew_id] = data
-
-            # Index workflow → crew mappings
             for workflow in data.get("triggers_for_workflows", []):
                 self.workflow_map[workflow] = crew_id
-
-            logger.debug(f"Loaded crew: {crew_id}")
         except Exception as e:
             logger.error(f"Failed to load crew {path}: {e}")
 
-    # ---------- LOOKUPS ----------
+    # ── lookups ───────────────────────────────────────────────────────────────
 
     def get_agent(self, agent_id: str) -> Optional[dict]:
         return self.agents.get(agent_id)
@@ -119,78 +121,100 @@ class CrewRegistry:
             for cid, c in self.crews.items()
         ]
 
-    # ---------- APPROVAL POLICY ----------
+    # ── tool wiring ───────────────────────────────────────────────────────────
+
+    def _build_tools(self, agent_def: dict) -> list:
+        """Instantiate tools declared in can_call_tools."""
+        tool_names: list[str] = agent_def.get("can_call_tools", [])
+        if not tool_names:
+            return []
+
+        # Group by prefix so each loader gets all its tool names at once
+        by_prefix: dict[str, list[str]] = {}
+        for name in tool_names:
+            for prefix, loader in TOOL_LOADERS.items():
+                if name.startswith(prefix):
+                    by_prefix.setdefault(prefix, []).append(name)
+                    break
+
+        tools = []
+        for prefix, names in by_prefix.items():
+            loader = TOOL_LOADERS[prefix]
+            tools.extend(loader(names))
+
+        if tools:
+            logger.debug(f"Wired {len(tools)} tool(s): {[t.name for t in tools]}")
+        return tools
+
+    # ── approval ──────────────────────────────────────────────────────────────
 
     def requires_approval(self, agent_id: str, task: str) -> bool:
-        """
-        TEMPORARILY DISABLED for testing.
-        
-        Original logic gated tier-b agents and certain action keywords (DM, email,
-        post, refund, payment) behind human approval via Slack. The Slack 
-        notification fires correctly, but the callback endpoint to receive the
-        approval decision was never built in main.py.
-        
-        Until /slack/interactions endpoint is implemented with proper signature
-        verification and payload parsing, the approval flow can't complete, so
-        this method always returns False to allow agents to execute directly.
-        
-        TO RE-ENABLE LATER: Restore the original logic from git history once
-        the /slack/interactions endpoint exists.
-        """
+        # ponytail: approval disabled until /slack/interactions endpoint exists
         return False
 
-    # ---------- AGENT INVOCATION ----------
+    # ── agent invocation ──────────────────────────────────────────────────────
 
     async def invoke(self, agent_id: str, task: str, context: dict) -> Any:
-        """
-        Invoke a single agent for a task.
-
-        Builds a CrewAI Agent + Task on the fly, runs it, returns result.
-        """
         agent_def = self.agents.get(agent_id)
         if not agent_def:
             raise ValueError(f"Agent {agent_id} not found")
 
-        # Build the LLM
         llm = self._build_llm(agent_def)
+        tools = self._build_tools(agent_def)
 
-        # Build the CrewAI Agent
+        # Inject relevant past memories into the task description
+        memory_context = ""
+        mem = self._get_memory()
+        if mem:
+            memories = mem.retrieve(agent_id=agent_id, query=task, top_k=5)
+            memory_context = mem.format_for_context(memories)
+
+        full_task = f"{task}\n\n{memory_context}".strip() if memory_context else task
+
         cw_agent = Agent(
             role=agent_def.get("role", agent_id),
             goal=agent_def.get("goal", "Complete the assigned task"),
             backstory=agent_def.get("backstory", ""),
             llm=llm,
+            tools=tools,
             verbose=True,
             allow_delegation=False,
         )
 
-        # Build the Task
         cw_task = Task(
-            description=task,
+            description=full_task,
             expected_output=agent_def.get("expected_output", "A clear, actionable response"),
             agent=cw_agent,
         )
 
-        # Single-agent crew for this invocation
         crew = Crew(
             agents=[cw_agent],
             tasks=[cw_task],
             process=Process.sequential,
+            memory=True,
             verbose=True,
         )
 
         result = crew.kickoff(inputs=context)
-        return str(result)
+        result_str = str(result)
+
+        # Store this invocation as a memory for future runs
+        if mem:
+            summary = f"Task: {task[:200]}\nResult: {result_str[:600]}"
+            mem.store(
+                agent_id=agent_id,
+                content=summary,
+                memory_type="episodic",
+                metadata={"context_keys": list(context.keys())},
+            )
+
+        return result_str
 
     async def run_crew(self, crew_id: str, inputs: dict) -> Any:
-        """
-        Run a coordinated crew (multi-agent collaboration).
-        """
         crew_def = self.crews.get(crew_id)
         if not crew_def:
             raise ValueError(f"Crew {crew_id} not found")
 
-        # Build agents and tasks for this crew
         agents = []
         tasks = []
         agent_lookup = {}
@@ -201,11 +225,13 @@ class CrewRegistry:
                 logger.warning(f"Agent {member['agent_id']} not found, skipping")
                 continue
             llm = self._build_llm(agent_def)
+            tools = self._build_tools(agent_def)
             cw_agent = Agent(
                 role=agent_def.get("role", member["agent_id"]),
                 goal=agent_def.get("goal", "Complete the assigned task"),
                 backstory=agent_def.get("backstory", ""),
                 llm=llm,
+                tools=tools,
                 verbose=True,
                 allow_delegation=member.get("can_delegate", False),
             )
@@ -223,24 +249,22 @@ class CrewRegistry:
             )
             tasks.append(cw_task)
 
-        # Build manager LLM for hierarchical processes
         if crew_def.get("hierarchical"):
-            process = Process.hierarchical
-            # Hierarchical crews need a manager LLM
-            manager_llm = self._build_llm({})  # Use defaults
+            manager_llm = self._build_llm({})
             crew = Crew(
                 agents=agents,
                 tasks=tasks,
-                process=process,
+                process=Process.hierarchical,
                 manager_llm=manager_llm,
+                memory=True,
                 verbose=True,
             )
         else:
-            process = Process.sequential
             crew = Crew(
                 agents=agents,
                 tasks=tasks,
-                process=process,
+                process=Process.sequential,
+                memory=True,
                 verbose=True,
             )
 
@@ -248,44 +272,24 @@ class CrewRegistry:
         return str(result)
 
     async def resume_after_approval(self, approval_record: dict) -> Any:
-        """Resume an agent execution after human approval."""
-        # In a production system this would re-hydrate state from the approval record.
-        # For Phase 2, we re-invoke the original task.
         return await self.invoke(
             agent_id=approval_record["agent_id"],
             task=approval_record["task"],
             context=approval_record.get("context", {}),
         )
 
-    # ---------- LLM BUILDER ----------
+    # ── LLM builder ───────────────────────────────────────────────────────────
 
     def _build_llm(self, agent_def: dict):
-        """
-        Build the LLM client routing natively through OpenRouter via CrewAI.
-        """
-        # Read the model name from agent definition or use the global default
         model = agent_def.get("llm_model", settings.default_llm_model)
-
-        # Apply the mapping alias if the agent is requesting an old placeholder string
         if model in MODEL_ALIASES:
             model = MODEL_ALIASES[model]
-
-        # Strip any accidental legacy prefixes to keep the parsing engine clean
         if model:
             model = model.replace("openrouter/", "")
 
         import os
         api_key = getattr(settings, "openrouter_api_key", None) or os.getenv("OPENROUTER_API_KEY")
-
         if not api_key:
-            raise ValueError("Missing OpenRouter API Key. Please ensure OPENROUTER_API_KEY is set in Railway.")
+            raise ValueError("Missing OPENROUTER_API_KEY in Railway variables.")
 
-        # Construct the native CrewAI model identifier format: openrouter/provider/model
-        native_model_string = f"openrouter/{model}"
-        logger.info(f"Building Native OpenRouter Connection. Target: {native_model_string}")
-
-        # CrewAI natively handles the base_urls and endpoint routing when prefixed with openrouter/
-        return LLM(
-            model=native_model_string,
-            api_key=api_key,
-        )
+        return LLM(model=f"openrouter/{model}", api_key=api_key)
