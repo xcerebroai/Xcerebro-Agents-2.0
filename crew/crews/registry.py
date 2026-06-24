@@ -191,7 +191,6 @@ class CrewRegistry:
             agents=[cw_agent],
             tasks=[cw_task],
             process=Process.sequential,
-            memory=True,
             verbose=True,
         )
 
@@ -256,7 +255,6 @@ class CrewRegistry:
                 tasks=tasks,
                 process=Process.hierarchical,
                 manager_llm=manager_llm,
-                memory=True,
                 verbose=True,
             )
         else:
@@ -264,7 +262,6 @@ class CrewRegistry:
                 agents=agents,
                 tasks=tasks,
                 process=Process.sequential,
-                memory=True,
                 verbose=True,
             )
 
