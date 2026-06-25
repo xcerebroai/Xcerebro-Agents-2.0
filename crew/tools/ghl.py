@@ -52,7 +52,7 @@ def _safe_request(method: str, url: str, **kwargs) -> dict:
 
 class ReadContactsInput(BaseModel):
     query: str = Field(default="", description="Search term (name, email, or phone)")
-    limit: int = Field(default=20, description="Max contacts to return (1–100)")
+    max_contacts: int = Field(default=200, description="Max contacts to return. Use 500+ for full-database audits. Fetches in pages of 100.")
 
 
 class GHLReadContactsTool(BaseTool):
@@ -60,26 +60,40 @@ class GHLReadContactsTool(BaseTool):
     description: str = (
         "Search and list contacts in GoHighLevel CRM. Use to find contacts by "
         "name/email/phone, see recently updated leads, or pull the full contact list. "
-        "Returns contact names, pipeline stages, tags, last activity, and contact IDs."
+        "Returns contact names, pipeline stages, tags, last activity, and contact IDs. "
+        "Set max_contacts=500 or higher for full-database audits."
     )
     args_schema: Type[BaseModel] = ReadContactsInput
 
-    def _run(self, query: str = "", limit: int = 20) -> str:
-        params = {
-            "locationId": _location_id(),
-            "limit": min(limit, 100),
-        }
-        if query:
-            params["query"] = query
+    def _run(self, query: str = "", max_contacts: int = 200) -> str:
+        contacts: list = []
+        skip = 0
+        page_size = 100
 
-        data = _safe_request("GET", f"{GHL_BASE}/contacts/", params=params)
-        if "error" in data:
-            return f"GHL error: {data['error']}"
+        while len(contacts) < max_contacts:
+            params = {
+                "locationId": _location_id(),
+                "limit": page_size,
+                "skip": skip,
+            }
+            if query:
+                params["query"] = query
 
-        contacts = data.get("contacts", [])
+            data = _safe_request("GET", f"{GHL_BASE}/contacts/", params=params)
+            if "error" in data:
+                return f"GHL error: {data['error']}"
+
+            page = data.get("contacts", [])
+            contacts.extend(page)
+
+            if len(page) < page_size:
+                break  # last page
+            skip += page_size
+
         if not contacts:
             return "No contacts found matching that query."
 
+        contacts = contacts[:max_contacts]
         rows = []
         for c in contacts:
             name = f"{c.get('firstName','')} {c.get('lastName','')}".strip() or "(no name)"
@@ -92,7 +106,9 @@ class GHLReadContactsTool(BaseTool):
                 f"tags:[{tags}] | updated:{updated}"
             )
 
-        return f"Found {len(contacts)} contact(s):\n" + "\n".join(rows)
+        total_in_db = data.get("meta", {}).get("total", len(contacts))
+        suffix = f" (showing {len(contacts)} of {total_in_db} total)" if total_in_db > len(contacts) else ""
+        return f"Found {len(contacts)} contact(s){suffix}:\n" + "\n".join(rows)
 
 
 # ── Update Contact ────────────────────────────────────────────────────────────
