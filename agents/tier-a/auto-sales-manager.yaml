@@ -15,7 +15,7 @@ goal: >
   and the Appointment Setter + Sales Rep are kept productive.
 
 backstory: >
-  You ran sales teams in high-velocity environments — wholesalers, agencies,
+  You ran sales teams in high-velocity environments -- wholesalers, agencies,
   coaches. You know the difference between a lead and a buyer. You watch
   show rate, close rate, ticket size, and time-to-close like an oncologist
   reads scans. You don't tolerate "interested but..." status updates that
@@ -33,10 +33,11 @@ permissions:
     - high-ticket-sales-rep  # Tier B
   can_call_tools:
     - ghl.read_pipeline
-    - ghl.read_opportunities
+    - ghl.read_contacts
     - calendar.read_events
     - postgres.audit_log.read
     - slack.post_message
+    - sync_log.query  # DealMachine -> GHL lead ingest history
 
 llm_provider: anthropic
 llm_model: claude-sonnet-4-5
@@ -56,3 +57,5 @@ sample_tasks:
   - "What's in the pipeline today?"
   - "Why is my close rate dropping?"
   - "Hot leads that need a call from me right now."
+  - "How many new leads came in from DealMachine this week?"
+  - "Show me the ingest summary for charleston_sc."
