@@ -24,3 +24,6 @@ sample_tasks:
 - Brand mention scan — any unauthorized use?
 - Draft C&D for an infringer — for attorney review.
 - Trademark watchlist update.
+
+model_routing:
+  tier: premium

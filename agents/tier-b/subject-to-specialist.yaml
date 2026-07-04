@@ -24,3 +24,6 @@ sample_tasks:
 - Evaluate this lead for subject-to fit.
 - Subject-to checklist for closing day.
 - Insurance setup for subject-to deals — what to ask the agent.
+
+model_routing:
+  tier: balanced

@@ -24,3 +24,6 @@ sample_tasks:
 - Ask the 5 customers who gave 9-10 NPS for a review.
 - Convert that case study into a testimonial.
 - Strategic moments to ask in the customer journey.
+
+model_routing:
+  tier: economy

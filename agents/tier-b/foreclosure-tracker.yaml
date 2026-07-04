@@ -24,3 +24,6 @@ sample_tasks:
 - This week's foreclosure filings in Bexar County.
 - Pre-foreclosure leads ranked by motivation score.
 - Tax-delinquent list — properties with 3+ years owed.
+
+model_routing:
+  tier: economy

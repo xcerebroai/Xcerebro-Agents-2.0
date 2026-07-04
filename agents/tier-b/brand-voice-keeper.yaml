@@ -24,3 +24,6 @@ sample_tasks:
 - Review tomorrow's broadcast email for voice fit.
 - This Tier B agent's draft sounds off — diagnose.
 - Audit last 30 days of content for voice consistency.
+
+model_routing:
+  tier: balanced

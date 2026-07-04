@@ -24,3 +24,6 @@ sample_tasks:
 - LinkedIn post on autonomous workforce — operator angle.
 - Connection outreach script for B2B SaaS founders.
 - 'Comment strategy: which posts to engage on this week.'
+
+model_routing:
+  tier: balanced

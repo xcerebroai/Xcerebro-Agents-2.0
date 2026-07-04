@@ -25,3 +25,6 @@ sample_tasks:
 - Triage my inbox — top 10 that need my attention?
 - Draft replies to 5 routine emails for review.
 - Archive newsletters older than 7 days.
+
+model_routing:
+  tier: balanced

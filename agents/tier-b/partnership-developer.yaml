@@ -25,3 +25,6 @@ sample_tasks:
 - Find 10 potential partnership targets in my niche.
 - Pitch email to a potential partner.
 - Affiliate program structure recommendation.
+
+model_routing:
+  tier: balanced

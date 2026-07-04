@@ -114,3 +114,6 @@ delegation_rules:
     delegate_to: appointment-setter
   - condition: "Lead is high-fit Tier 3 candidate"
     delegate_to: high-ticket-sales-rep
+
+model_routing:
+  tier: balanced

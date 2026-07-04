@@ -24,3 +24,6 @@ sample_tasks:
 - Organize Q3 expenses by category for the CPA.
 - Pull all 1099-eligible contractor payments for the year.
 - Prep the home office deduction documentation.
+
+model_routing:
+  tier: premium

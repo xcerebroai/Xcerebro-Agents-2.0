@@ -26,3 +26,6 @@ sample_tasks:
 - Audit the Comment-to-DM workflow — anything redundant?
 - Why is the Daily KPI Brief sometimes missing the Sales Manager output?
 - Add error handling to the failed payment workflow.
+
+model_routing:
+  tier: balanced

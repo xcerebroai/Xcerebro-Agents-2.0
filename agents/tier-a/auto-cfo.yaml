@@ -143,3 +143,6 @@ forbidden_actions:
   - "Recommend specific tax strategies (refer to CPA)"
   - "Approve subscription cancellations"
   - "Write to any database — read only"
+
+model_routing:
+  tier: premium

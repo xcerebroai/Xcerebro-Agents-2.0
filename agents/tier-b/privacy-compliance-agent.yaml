@@ -24,3 +24,6 @@ sample_tasks:
 - Process a GDPR deletion request.
 - Privacy policy update — what changed?
 - Cookie banner setup — minimal viable compliance.
+
+model_routing:
+  tier: premium

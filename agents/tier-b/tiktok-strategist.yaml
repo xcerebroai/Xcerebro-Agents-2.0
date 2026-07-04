@@ -26,3 +26,6 @@ sample_tasks:
 - What sounds are trending for my niche this week?
 - Repurpose my best Reel for TikTok — what changes?
 - TikTok content plan for the next 30 days.
+
+model_routing:
+  tier: balanced

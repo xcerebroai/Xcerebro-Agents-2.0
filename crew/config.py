@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     # ---- LLM Provider ----
     anthropic_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None  # used for LLM + embeddings
     deepseek_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
     deepseek_base_url: str = "https://api.deepseek.com/v1"
@@ -50,8 +51,14 @@ class Settings(BaseSettings):
 
     # ---- Slack approval ----
     slack_bot_token: Optional[str] = None
+    slack_signing_secret: Optional[str] = None  # verifies /slack/interactions payloads
     slack_approval_channel_id: Optional[str] = None
     slack_notifications_channel_id: Optional[str] = None
+
+    # ---- Graduated autonomy ----
+    # Clean approvals per (agent, action_type) before the weekly digest
+    # proposes flipping auto_approve. A human flips it, never the system.
+    trust_auto_approve_threshold: int = 10
 
     # ---- Cost controls ----
     max_tokens_per_task: int = 4000

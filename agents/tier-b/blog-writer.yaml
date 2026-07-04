@@ -24,3 +24,6 @@ sample_tasks:
 - 800-word post on autonomous AI workflows.
 - Update an existing post that's dropping in rankings.
 - Quick blog post to ride the trend news cycle.
+
+model_routing:
+  tier: balanced

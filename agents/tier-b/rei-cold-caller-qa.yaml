@@ -24,3 +24,6 @@ sample_tasks:
 - Review last 5 calls — coaching priorities?
 - What separates appointments that close from those that don't?
 - Caller-level performance review.
+
+model_routing:
+  tier: balanced

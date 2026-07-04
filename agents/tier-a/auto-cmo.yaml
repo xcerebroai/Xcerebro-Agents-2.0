@@ -94,3 +94,6 @@ delegation_rules:
     delegate_to: social-media-manager
   - condition: "Need to run paid traffic"
     delegate_to: ads-strategist
+
+model_routing:
+  tier: balanced

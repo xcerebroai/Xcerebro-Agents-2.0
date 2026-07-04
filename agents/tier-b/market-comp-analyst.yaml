@@ -25,3 +25,6 @@ sample_tasks:
 - ARV for a property.
 - 'Neighborhood trend: 78245 zip code last 6 months.'
 - Adjusted comps with rehab calculations.
+
+model_routing:
+  tier: balanced

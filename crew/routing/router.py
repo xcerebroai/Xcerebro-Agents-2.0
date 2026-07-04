@@ -115,6 +115,39 @@ MODEL_REGISTRY: Dict[str, ModelSpec] = {
 }
 
 
+# Registry model IDs → OpenRouter slugs. All execution goes through OpenRouter
+# (one API key), so routing only decides WHICH slug _build_llm uses.
+OPENROUTER_SLUGS: Dict[str, str] = {
+    "claude-opus-4-7": "anthropic/claude-opus-4.5",
+    "claude-sonnet-4-6": "anthropic/claude-sonnet-4.5",
+    "claude-haiku-4-5": "anthropic/claude-haiku-4.5",
+    "gpt-5.5": "openai/gpt-5.5",
+    "gpt-5-mini": "openai/gpt-5-mini",
+    "deepseek-v4-pro": "deepseek/deepseek-chat",
+    "deepseek-flash": "deepseek/deepseek-chat",  # same OpenRouter slug; flash tier kept for pricing intent
+    "groq-llama-3.3-70b": "meta-llama/llama-3.3-70b-instruct",
+}
+
+
+def to_openrouter_slug(model_id: str) -> str:
+    """Map a registry model ID to its OpenRouter slug (pass through if unknown)."""
+    return OPENROUTER_SLUGS.get(model_id, model_id)
+
+
+def cost_for_slug(slug: str, input_tokens: int, output_tokens: int) -> float:
+    """Estimate USD cost for a call by OpenRouter slug, using MODEL_REGISTRY pricing."""
+    for model_id, s in OPENROUTER_SLUGS.items():
+        if s == slug:
+            spec = MODEL_REGISTRY.get(model_id)
+            if spec:
+                return (input_tokens / 1000) * spec.cost_per_1k_input + \
+                       (output_tokens / 1000) * spec.cost_per_1k_output
+    # Unknown slug — assume Sonnet pricing (conservative)
+    spec = MODEL_REGISTRY["claude-sonnet-4-6"]
+    return (input_tokens / 1000) * spec.cost_per_1k_input + \
+           (output_tokens / 1000) * spec.cost_per_1k_output
+
+
 @dataclass
 class RoutingPolicy:
     """

@@ -25,3 +25,6 @@ sample_tasks:
 - Research 10 podcasts that fit my brand.
 - Pitch email to host for their show.
 - 'Episode plan: ''Building an AI workforce'' — guest format vs solo.'
+
+model_routing:
+  tier: balanced

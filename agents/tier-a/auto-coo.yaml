@@ -65,3 +65,6 @@ sample_tasks:
   - "What's stuck right now? What needs my eyes?"
   - "Run the weekly ops summary."
   - "Project X has been in 'in progress' for 5 weeks. Diagnose."
+
+model_routing:
+  tier: balanced

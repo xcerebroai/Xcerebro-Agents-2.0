@@ -25,3 +25,6 @@ sample_tasks:
 - Weekly KPI dashboard — what should be on it?
 - Build the cohort engagement dashboard.
 - Which metrics nobody's looked at in 30 days? Cut them.
+
+model_routing:
+  tier: balanced

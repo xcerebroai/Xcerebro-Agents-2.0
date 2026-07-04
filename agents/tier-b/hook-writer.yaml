@@ -54,3 +54,6 @@ sample_tasks:
   - "Hook this Reel: 'Why most wholesalers fail in their first year.'"
   - "Subject line for tomorrow's email about the new cohort."
   - "5 hooks for a Reel about probate deals — operator audience."
+
+model_routing:
+  tier: balanced

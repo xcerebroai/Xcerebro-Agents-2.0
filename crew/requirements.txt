@@ -3,8 +3,8 @@
 # ============================================================
 
 # Core agent framework
-crewai>=0.175.0
-crewai-tools>=0.55.0
+crewai==0.100.0
+crewai-tools==0.25.8
 
 # LangGraph for stateful workflows + human approval gates
 langgraph>=0.2.0
@@ -23,11 +23,12 @@ uvicorn[standard]>=0.32.0
 pydantic>=2.9.0
 pydantic-settings>=2.6.0
 
-# Database
+# Database + vector memory
 sqlalchemy>=2.0.36
 psycopg2-binary>=2.9.10
 alembic>=1.14.0
 redis>=5.2.0
+pgvector>=0.3.0
 
 # YAML for agent definitions
 pyyaml>=6.0.2

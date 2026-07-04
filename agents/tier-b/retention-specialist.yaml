@@ -26,3 +26,6 @@ sample_tasks:
 - Who's at risk in the next 30 days?
 - Save flow for a customer — what's the angle?
 - Win-back campaign for last quarter's churn.
+
+model_routing:
+  tier: balanced

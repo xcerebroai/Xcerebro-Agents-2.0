@@ -24,3 +24,6 @@ sample_tasks:
 - 90-day cash flow forecast.
 - Best/likely/worst case for Q3 revenue.
 - What happens to cash if churn doubles?
+
+model_routing:
+  tier: balanced

@@ -48,3 +48,6 @@ sample_tasks:
   - "Lead just qualified. Book them on a 30-min call this week."
   - "Confirmation message for tomorrow's calls."
   - "Send 24-hour reminder to today's bookings."
+
+model_routing:
+  tier: balanced

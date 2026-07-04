@@ -24,3 +24,6 @@ sample_tasks:
 - What should Tier 1 cost?
 - Pricing comparison for AI workforce products.
 - Willingness-to-pay survey for Skool VIP.
+
+model_routing:
+  tier: balanced

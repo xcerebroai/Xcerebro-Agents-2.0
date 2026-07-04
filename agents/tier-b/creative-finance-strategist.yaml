@@ -23,3 +23,6 @@ sample_tasks:
 - Creative finance options for this seller's situation.
 - Wrap structure for a deal.
 - Lease option vs subject-to — which fits here?
+
+model_routing:
+  tier: premium

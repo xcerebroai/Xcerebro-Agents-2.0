@@ -27,3 +27,6 @@ sample_tasks:
 - Find 10 low-competition keywords for AI Cheat Codes audience.
 - Audit xcerebro.ai for SEO issues.
 - Write an SEO brief for a blog post on 'autonomous AI agents.'
+
+model_routing:
+  tier: balanced

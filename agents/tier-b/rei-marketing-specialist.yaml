@@ -24,3 +24,6 @@ sample_tasks:
 - Direct mail campaign — list selection and creative.
 - Cold call list — pull and prioritize.
 - RVM script for tax-delinquent leads.
+
+model_routing:
+  tier: balanced

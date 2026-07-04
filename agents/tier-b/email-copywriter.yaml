@@ -27,3 +27,6 @@ sample_tasks:
 - Write the cohort launch announcement email.
 - Re-engagement sequence (3 emails) for leads who haven't opened in 60 days.
 - Subject line A/B test variants for tomorrow's broadcast.
+
+model_routing:
+  tier: balanced

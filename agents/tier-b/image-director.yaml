@@ -55,3 +55,6 @@ sample_tasks:
   - "Brief for Reel cover: 'Why most wholesalers fail.'"
   - "Carousel concept (10 slides) for AI workforce explainer."
   - "Ad creative for cohort launch — vertical for IG/Facebook."
+
+model_routing:
+  tier: balanced

@@ -24,3 +24,6 @@ sample_tasks:
 - 'Thumbnail concept for: ''Why most wholesalers fail.'''
 - A/B test variants for tomorrow's video.
 - Audit my last 10 thumbnails — what's working?
+
+model_routing:
+  tier: balanced

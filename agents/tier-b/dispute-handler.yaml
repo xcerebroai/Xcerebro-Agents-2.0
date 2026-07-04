@@ -24,3 +24,6 @@ sample_tasks:
 - Build response for this Stripe dispute.
 - Disputes won/lost last 30 days — patterns?
 - 'Pre-emptive: customers who might dispute soon.'
+
+model_routing:
+  tier: premium

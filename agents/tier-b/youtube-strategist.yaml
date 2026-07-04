@@ -28,3 +28,6 @@ sample_tasks:
 - What videos should I publish next month?
 - Why is retention dropping at the 2-min mark on this video?
 - Title and thumbnail concepts for the next Reel-to-YouTube long-form.
+
+model_routing:
+  tier: balanced

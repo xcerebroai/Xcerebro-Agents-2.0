@@ -24,3 +24,6 @@ sample_tasks:
 - Pre-brief for tomorrow's guest interview.
 - Show notes for episode 47.
 - 'Ad placement: where in the episode for max conversion?'
+
+model_routing:
+  tier: balanced

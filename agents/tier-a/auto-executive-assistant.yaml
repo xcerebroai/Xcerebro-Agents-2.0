@@ -63,3 +63,6 @@ sample_tasks:
   - "Decline this meeting politely: [paste invite]"
   - "Draft a reply to [person] thanking them and proposing 3 times next week."
   - "Block my Wednesday afternoons as deep work for the next 4 weeks."
+
+model_routing:
+  tier: balanced

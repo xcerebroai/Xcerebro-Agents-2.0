@@ -58,3 +58,6 @@ sample_tasks:
   - "Lead just qualified from DM Agent. Run discovery via DM."
   - "Lead asked about pricing for Tier 3 done-for-you. Draft response."
   - "Lead is hesitant on price. Address the real objection."
+
+model_routing:
+  tier: premium

@@ -1,31 +1,36 @@
 """
 Xcerebro 2.0 — Approval Manager
 
-Sends approval requests to Slack and tracks pending approvals.
-Resolves them when the human clicks approve/reject.
+Sends approval requests to Slack and tracks them in Postgres via the
+GovernanceStore (survives restarts — an approval created before a deploy
+can still be resolved after it).
 
-In production, the Slack message uses Block Kit interactive buttons that
-post back to /approvals/{approval_id}. For Phase 2 MVP, we use simple
-formatted messages and require the buyer to manually call the endpoint.
+The Slack message uses Block Kit buttons whose clicks POST to
+/slack/interactions, which resolves the approval and resumes the agent.
 """
 
-import asyncio
 import uuid
-from datetime import datetime
 from typing import Any, Optional
 
 from loguru import logger
 from slack_sdk.web.async_client import AsyncWebClient
 from slack_sdk.errors import SlackApiError
 
+from tools.governance import GovernanceStore
+
 
 class ApprovalManager:
-    """Tracks pending approvals + posts to Slack."""
+    """Posts approval requests to Slack; persistence lives in GovernanceStore."""
 
-    def __init__(self, slack_token: Optional[str], approval_channel: Optional[str]):
+    def __init__(
+        self,
+        slack_token: Optional[str],
+        approval_channel: Optional[str],
+        store: Optional[GovernanceStore] = None,
+    ):
         self.slack_token = slack_token
         self.approval_channel = approval_channel
-        self.pending: dict[str, dict] = {}
+        self.store = store
         self.slack_client: Optional[AsyncWebClient] = None
 
         if slack_token:
@@ -41,26 +46,33 @@ class ApprovalManager:
         description: str,
         context: dict,
         invocation_id: str,
+        agent_id: Optional[str] = None,
+        action_type: Optional[str] = None,
     ) -> str:
         """
-        Create a new approval request.
-
-        Returns the approval_id. The caller is paused until /approvals/{id}
-        is called with a decision.
+        Create a new approval request (persisted) and post it to Slack.
+        Returns the approval_id.
         """
-        approval_id = str(uuid.uuid4())
+        if self.store:
+            approval_id = self.store.create_approval(
+                agent_id=agent_id or "",
+                task=description,
+                context=context,
+                action_type=action_type,
+                invocation_id=invocation_id,
+                title=title,
+            )
+        else:
+            approval_id = str(uuid.uuid4())
+            logger.warning(f"No governance store — approval {approval_id} not persisted")
+
         record = {
             "id": approval_id,
             "title": title,
             "description": description,
-            "context": context,
-            "invocation_id": invocation_id,
-            "status": "pending",
-            "created_at": datetime.utcnow().isoformat(),
+            "action_type": action_type,
         }
-        self.pending[approval_id] = record
 
-        # Post to Slack
         if self.slack_client and self.approval_channel:
             try:
                 await self.slack_client.chat_postMessage(
@@ -83,17 +95,13 @@ class ApprovalManager:
         approver: str,
         note: Optional[str] = None,
     ) -> dict:
-        """Mark an approval as resolved (approve or reject)."""
-        record = self.pending.get(approval_id)
+        """Mark an approval resolved (approve/reject). Returns the full record."""
+        record = None
+        if self.store:
+            record = self.store.resolve_approval(approval_id, decision, approver, note)
         if not record:
             raise ValueError(f"Approval {approval_id} not found or already resolved")
 
-        record["status"] = decision
-        record["approver"] = approver
-        record["note"] = note
-        record["resolved_at"] = datetime.utcnow().isoformat()
-
-        # Post resolution to Slack
         if self.slack_client and self.approval_channel:
             emoji = "✅" if decision == "approve" else "❌"
             try:
@@ -104,35 +112,42 @@ class ApprovalManager:
             except SlackApiError as e:
                 logger.error(f"Slack resolution post failed: {e}")
 
-        # Don't delete — keep for audit
-        record_copy = dict(record)
-        return record_copy
+        return record
+
+    async def notify(self, text: str) -> None:
+        """Post a plain alert to the approval channel (spend cap, rate limit, etc.)."""
+        if self.slack_client and self.approval_channel:
+            try:
+                await self.slack_client.chat_postMessage(
+                    channel=self.approval_channel, text=text
+                )
+            except SlackApiError as e:
+                logger.error(f"Slack alert failed: {e}")
 
     def get_pending(self) -> list[dict]:
-        """List all pending approvals."""
-        return [r for r in self.pending.values() if r.get("status") == "pending"]
+        return self.store.pending_approvals() if self.store else []
 
     @staticmethod
     def _build_approval_blocks(record: dict) -> list[dict]:
-        """Build Slack Block Kit message for an approval request."""
+        """Slack Block Kit message with Approve/Reject buttons."""
+        action_line = f"\n*Action type:* `{record['action_type']}`" if record.get("action_type") else ""
         return [
             {
                 "type": "header",
-                "text": {"type": "plain_text", "text": f"🔔 {record['title']}"},
+                "text": {"type": "plain_text", "text": f"🔔 {record['title']}"[:150]},
             },
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"*Description:*\n{record['description']}",
+                    "text": f"*Task:*\n{record['description'][:2500]}{action_line}",
                 },
             },
             {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*Approval ID:* `{record['id']}`",
-                },
+                "type": "context",
+                "elements": [
+                    {"type": "mrkdwn", "text": f"Approval ID: `{record['id']}`"},
+                ],
             },
             {
                 "type": "actions",

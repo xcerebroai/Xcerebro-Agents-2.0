@@ -24,3 +24,6 @@ sample_tasks:
 - This week's internal update.
 - Cohort newsletter — Week 4 of 12.
 - Quarterly roadmap update for the team.
+
+model_routing:
+  tier: balanced

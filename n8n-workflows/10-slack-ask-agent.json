@@ -1,0 +1,99 @@
+{
+  "name": "Xcerebro 2.0 — Slack Ask Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "xcerebro-ask",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-slack",
+      "name": "Slack Slash Command",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "xcerebro-ask"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"response_type\": \"in_channel\", \"text\": \"⏳ *Xcerebro is thinking...* I'll reply here in a moment.\" }",
+        "options": {}
+      },
+      "id": "ack-slack",
+      "name": "Acknowledge to Slack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": "jw646rgzAMrLcNvX",
+        "options": {}
+      },
+      "id": "get-config",
+      "name": "Get Config",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Get Config').first().json.AGENT_RUNTIME_URL }}/agents/auto-lead-manager/invoke",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"task\": {{ JSON.stringify($('Slack Slash Command').first().json.body.text) }},\n  \"context\": {\n    \"asked_by\": {{ JSON.stringify($('Slack Slash Command').first().json.body.user_name || 'unknown') }},\n    \"channel\": {{ JSON.stringify($('Slack Slash Command').first().json.body.channel_name || 'unknown') }}\n  },\n  \"require_approval\": false\n}",
+        "options": {
+          "timeout": 180000
+        },
+        "method": "POST"
+      },
+      "id": "invoke-agent",
+      "name": "Invoke Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Slack Slash Command').first().json.body.response_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"response_type\": \"in_channel\",\n  \"text\": {{ JSON.stringify($json.result || $json.error || 'Agent returned no response.') }}\n}",
+        "options": {
+          "timeout": 10000
+        },
+        "method": "POST"
+      },
+      "id": "post-result",
+      "name": "Post Result to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Slack Slash Command": {
+      "main": [[{ "node": "Acknowledge to Slack", "type": "main", "index": 0 }]]
+    },
+    "Acknowledge to Slack": {
+      "main": [[{ "node": "Get Config", "type": "main", "index": 0 }]]
+    },
+    "Get Config": {
+      "main": [[{ "node": "Invoke Agent", "type": "main", "index": 0 }]]
+    },
+    "Invoke Agent": {
+      "main": [[{ "node": "Post Result to Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none"
+  },
+  "tags": [{ "name": "xcerebro" }, { "name": "slack" }, { "name": "qa" }],
+  "pinData": {}
+}

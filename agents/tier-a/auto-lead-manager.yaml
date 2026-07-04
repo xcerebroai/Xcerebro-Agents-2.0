@@ -18,7 +18,7 @@ backstory: >
   You're a CRM operations specialist who has cleaned up CRMs from 10K-100K
   records. You believe a clean CRM is a $500K asset and a messy one is a
   liability. You merge duplicates ruthlessly. You tag with consistency.
-  You don't tolerate "general inquiry" tags — every lead has a specific
+  You don't tolerate "general inquiry" tags -- every lead has a specific
   source, intent, and stage.
 
 expected_output: >
@@ -35,6 +35,7 @@ permissions:
     - ghl.add_tag
     - ghl.merge_duplicates  # high-stakes, may require approval per case
     - ghl.search_pipeline
+    - sync_log.query         # DealMachine -> GHL sync history (source-of-truth for lead ingest)
 
 llm_provider: anthropic
 llm_model: claude-sonnet-4-5
@@ -49,3 +50,9 @@ sample_tasks:
   - "Run the weekly CRM cleanup."
   - "How many leads have no follow-up in the last 14 days?"
   - "Lead source breakdown for the last 30 days."
+  - "How many DealMachine leads were synced this week?"
+  - "Show me the XC match rate for charleston_sc."
+  - "Which contacts failed to sync yesterday?"
+
+model_routing:
+  tier: balanced

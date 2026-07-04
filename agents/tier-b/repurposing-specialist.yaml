@@ -25,3 +25,6 @@ sample_tasks:
 - Break this YouTube video into 10 short-form posts.
 - Repurpose this podcast for IG, LinkedIn, X, and a blog post.
 - 'Repurpose strategy: 1 long-form per week, X short-form per day.'
+
+model_routing:
+  tier: economy

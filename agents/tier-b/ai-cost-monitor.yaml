@@ -25,3 +25,6 @@ sample_tasks:
 - Daily LLM cost check — anomalies?
 - Top 5 agents by cost — are they earning their spend?
 - Recommend model downgrades to cut 30 percent from the bill.
+
+model_routing:
+  tier: economy
