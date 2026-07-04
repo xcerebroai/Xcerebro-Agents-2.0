@@ -24,3 +24,6 @@ sample_tasks:
 - Run e2e test suite.
 - Why is the Comment-to-DM workflow failing intermittently?
 - Pre-deploy regression check.
+
+model_routing:
+  tier: balanced

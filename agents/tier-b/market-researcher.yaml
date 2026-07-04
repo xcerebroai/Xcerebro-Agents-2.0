@@ -24,3 +24,6 @@ sample_tasks:
 - Size the AI workforce market for solo operators.
 - Underserved segment in REI investor education?
 - Profile of the typical $1K-$10K AI Cheat Codes buyer.
+
+model_routing:
+  tier: balanced

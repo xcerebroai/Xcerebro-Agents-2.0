@@ -26,3 +26,6 @@ sample_tasks:
 - Review next week's calendar — what should we decline?
 - Batch the 4 sales calls into one block.
 - Block Wednesday afternoons as deep work for the next month.
+
+model_routing:
+  tier: balanced

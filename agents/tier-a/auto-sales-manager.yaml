@@ -56,3 +56,6 @@ sample_tasks:
   - "What's in the pipeline today?"
   - "Why is my close rate dropping?"
   - "Hot leads that need a call from me right now."
+
+model_routing:
+  tier: balanced

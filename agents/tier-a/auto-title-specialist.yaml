@@ -49,3 +49,6 @@ sample_tasks:
   - "Review this affidavit of heirship and flag any issues."
   - "I uploaded a title commitment. Build the curative checklist."
   - "What questions should I ask my title attorney about this probate situation?"
+
+model_routing:
+  tier: premium

@@ -24,3 +24,6 @@ sample_tasks:
 - Tweet calendar for next week.
 - Thread structure for 'AI workforce' explainer.
 - 'Reply strategy: which big accounts should I engage with?'
+
+model_routing:
+  tier: balanced

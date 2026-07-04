@@ -25,3 +25,6 @@ sample_tasks:
 - Onboard new Tier 1 buyer — checklist.
 - Why are cohort members dropping off in week 1?
 - 'Pre-week-1 sequence: 3 emails before kickoff.'
+
+model_routing:
+  tier: balanced

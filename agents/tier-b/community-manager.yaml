@@ -24,3 +24,6 @@ sample_tasks:
 - Welcome the 12 new members from this week.
 - Hot thread — should I escalate?
 - 'Spotlight: best post of the week.'
+
+model_routing:
+  tier: balanced

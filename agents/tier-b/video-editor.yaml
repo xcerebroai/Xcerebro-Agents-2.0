@@ -23,3 +23,6 @@ sample_tasks:
 - Editing brief for tomorrow's Reel.
 - B-roll list for the YouTube long-form.
 - 'Caption styling for IG Reel: white-on-dark, sans-serif, bold.'
+
+model_routing:
+  tier: balanced

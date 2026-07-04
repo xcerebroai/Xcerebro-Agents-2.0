@@ -26,3 +26,6 @@ sample_tasks:
 - Review last 5 lost calls — common patterns?
 - What did the closer say differently in the wins?
 - Top 3 moments to coach in next training.
+
+model_routing:
+  tier: balanced

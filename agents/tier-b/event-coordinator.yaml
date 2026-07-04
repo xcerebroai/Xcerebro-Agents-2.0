@@ -26,3 +26,6 @@ sample_tasks:
 - Plan next week's cohort kickoff.
 - Q&A prep for tomorrow.
 - Post-event recap email and replay link.
+
+model_routing:
+  tier: balanced

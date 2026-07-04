@@ -24,3 +24,6 @@ sample_tasks:
 - Outline 8-module course on AI workforce.
 - Script for module 3, lesson 2.
 - Worksheet for the cohort week 5 assignment.
+
+model_routing:
+  tier: balanced

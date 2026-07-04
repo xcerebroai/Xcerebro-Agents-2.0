@@ -24,3 +24,6 @@ sample_tasks:
 - Audit the FAQ knowledge base.
 - Upload these new SOPs to Dify.
 - Quarterly review — what's outdated?
+
+model_routing:
+  tier: economy

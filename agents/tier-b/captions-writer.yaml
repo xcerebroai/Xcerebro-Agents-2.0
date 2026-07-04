@@ -24,3 +24,6 @@ sample_tasks:
 - Caption for tomorrow's Reel.
 - Caption hook variants — A/B test for IG.
 - Update caption style guide based on last 30 days performance.
+
+model_routing:
+  tier: balanced

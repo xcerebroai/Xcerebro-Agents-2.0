@@ -24,3 +24,6 @@ sample_tasks:
 - Audit last month's expenses — what should we cut?
 - Flag any unusual spending in the last 30 days.
 - Subscriptions we haven't used in 60 days.
+
+model_routing:
+  tier: balanced

@@ -42,3 +42,6 @@ sample_tasks:
   - "Pull the Maricopa County tax delinquent list for properties >$100K market value."
   - "Find recent posts about 'AI agents' going viral on Twitter this week."
   - "What competitors offer something similar to Xcerebro 2.0? Pricing?"
+
+model_routing:
+  tier: balanced

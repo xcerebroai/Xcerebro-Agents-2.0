@@ -50,3 +50,6 @@ sample_tasks:
   - "Schedule the 3 posts approved yesterday."
   - "Pull last 7 days performance across all platforms."
   - "Repurpose Tuesday's top Reel for TikTok and YouTube Shorts."
+
+model_routing:
+  tier: balanced

@@ -25,3 +25,6 @@ sample_tasks:
 - Deep-dive on AI agent regulation — what's coming?
 - Why is autonomous coding suddenly hot? Lasting?
 - 'Multi-week analysis: ''AI workforce'' search trend.'
+
+model_routing:
+  tier: balanced

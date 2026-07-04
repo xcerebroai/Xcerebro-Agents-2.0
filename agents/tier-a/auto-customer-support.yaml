@@ -51,3 +51,6 @@ sample_tasks:
   - "Ticket: customer says install script failed at step 2."
   - "Member can't access Skool VIP — diagnose."
   - "Run weekly support summary: top 5 issues, escalation rate."
+
+model_routing:
+  tier: balanced

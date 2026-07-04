@@ -24,3 +24,6 @@ sample_tasks:
 - Pull title chain for a property.
 - Identify all parties on this property.
 - Tax history for the last 10 years on a property.
+
+model_routing:
+  tier: premium

@@ -26,3 +26,6 @@ sample_tasks:
 - Who's up for renewal in the next 30 days?
 - 'Draft outreach for at-risk renewal: customer name.'
 - Power users on basic plan — upgrade pitch.
+
+model_routing:
+  tier: balanced

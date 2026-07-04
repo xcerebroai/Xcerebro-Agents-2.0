@@ -55,3 +55,6 @@ sample_tasks:
   - "Workflow X is failing at the HTTP node. Diagnose and fix."
   - "Build a new workflow: when a Stripe payment succeeds, send a Slack notification."
   - "Document the Comment-to-DM workflow for the team wiki."
+
+model_routing:
+  tier: balanced

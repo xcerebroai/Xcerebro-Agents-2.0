@@ -54,3 +54,6 @@ sample_tasks:
   - "What's trending on X today for AI builders?"
   - "Find 3 Reels formats going viral this week in the REI space."
   - "What's the angle on the latest [topic] discourse?"
+
+model_routing:
+  tier: economy

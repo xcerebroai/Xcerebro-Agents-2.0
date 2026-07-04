@@ -27,3 +27,6 @@ sample_tasks:
 - Screen this batch of resumes for the VA role.
 - Initial qualifying questions for a role.
 - Schedule top 5 candidates with the operator.
+
+model_routing:
+  tier: balanced

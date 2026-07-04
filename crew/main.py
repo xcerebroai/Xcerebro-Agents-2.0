@@ -10,7 +10,12 @@ Endpoints:
     POST /workflows/trigger          — generic webhook trigger from n8n
     GET  /agents                     — list all available agents
     GET  /crews                      — list all available crews
-    POST /approvals/{approval_id}    — human approval response (from Slack)
+    POST /approvals/{approval_id}    — human approval response (manual/API)
+    POST /slack/interactions         — Slack button clicks (approve/reject)
+    GET  /approvals                  — pending approvals
+    GET  /spend                      — LLM spend summary + daily cap
+    GET  /governance/trust           — graduated-autonomy counters + flip candidates
+    POST /governance/trust/flip      — human flips auto-approve for (agent, action)
     GET  /audit                      — recent agent activity log
 
 Architecture:
@@ -19,15 +24,16 @@ Architecture:
     human approves/rejects → action executes or aborts
 """
 
+import json
 import os
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 from typing import Any, Optional
 
 import yaml
-from fastapi import FastAPI, HTTPException, Header, Depends, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Header, Depends, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -35,6 +41,7 @@ from pydantic import BaseModel, Field
 from crews.registry import CrewRegistry
 from tools.audit import AuditLogger
 from tools.approval import ApprovalManager
+from tools.governance import GovernanceStore
 from config import settings
 
 # ============================================================
@@ -51,10 +58,14 @@ async def lifespan(app: FastAPI):
     app.state.registry.load_all()
 
     app.state.audit = AuditLogger(database_url=settings.database_url)
+    app.state.governance = GovernanceStore(database_url=settings.database_url)
+    app.state.registry.set_governance(app.state.governance)
     app.state.approval = ApprovalManager(
         slack_token=settings.slack_bot_token,
         approval_channel=settings.slack_approval_channel_id,
+        store=app.state.governance,
     )
+    app.state.last_cap_alert_date = None  # dedupe daily spend-cap Slack alerts
 
     logger.info(f"Loaded {len(app.state.registry.agents)} agents, "
                 f"{len(app.state.registry.crews)} crews")
@@ -154,11 +165,10 @@ async def invoke_agent(
 
     try:
         # Determine if this action requires human approval
-        # (Based on agent's permission tier + .env defaults)
+        # (agent YAML permissions + action-type defaults + earned auto-approve)
+        gate_needed, action_type = registry.requires_approval(agent_id, req.task)
         needs_approval = (
-            req.require_approval
-            if req.require_approval is not None
-            else registry.requires_approval(agent_id, req.task)
+            req.require_approval if req.require_approval is not None else gate_needed
         )
 
         if needs_approval:
@@ -169,6 +179,8 @@ async def invoke_agent(
                 description=req.task,
                 context=req.context,
                 invocation_id=invocation_id,
+                agent_id=agent_id,
+                action_type=action_type,
             )
             audit.log_event(
                 event_type="agent.approval.requested",
@@ -213,12 +225,23 @@ async def invoke_agent(
             invocation_id=invocation_id,
             payload={"error": str(e)},
         )
+        await _maybe_alert_cap(request.app, str(e))
         return AgentInvokeResponse(
             invocation_id=invocation_id,
             agent_id=agent_id,
             status="error",
             error=str(e),
         )
+
+
+async def _maybe_alert_cap(app: FastAPI, error: str) -> None:
+    """Slack-alert spend-cap / rate-limit refusals, once per day to avoid cron spam."""
+    if "SPEND_CAP" not in error and "RATE_LIMIT" not in error:
+        return
+    if app.state.last_cap_alert_date == date.today():
+        return
+    app.state.last_cap_alert_date = date.today()
+    await app.state.approval.notify(f"🛑 Agent runtime kill switch tripped: {error}")
 
 
 # ============================================================
@@ -282,6 +305,7 @@ async def run_crew(
             invocation_id=invocation_id,
             payload={"error": str(e)},
         )
+        await _maybe_alert_cap(request.app, str(e))
         raise HTTPException(500, f"Crew execution failed: {e}")
 
 
@@ -386,6 +410,14 @@ async def handle_approval(
         payload={"approver": decision.approver, "note": decision.note},
     )
 
+    # Graduated autonomy: approve increments the clean counter, reject resets it
+    gov: GovernanceStore = request.app.state.governance
+    gov.record_decision(
+        agent_id=record.get("agent_id", ""),
+        action_type=record.get("action_type"),
+        approved=decision.decision == "approve",
+    )
+
     if decision.decision == "approve":
         # Resume execution of the paused agent invocation
         registry: CrewRegistry = request.app.state.registry
@@ -393,6 +425,150 @@ async def handle_approval(
         return {"approval_id": approval_id, "status": "resumed", "result": result}
 
     return {"approval_id": approval_id, "status": "rejected"}
+
+
+# ============================================================
+# SLACK INTERACTIVITY (button clicks land here)
+# ============================================================
+
+async def _resume_approved(app: FastAPI, record: dict) -> None:
+    """Background task: run the approved invocation and audit the outcome."""
+    registry: CrewRegistry = app.state.registry
+    audit: AuditLogger = app.state.audit
+    try:
+        result = await registry.resume_after_approval(record)
+        audit.log_event(
+            event_type="agent.invoke.complete",
+            agent_id=record.get("agent_id"),
+            invocation_id=record.get("invocation_id"),
+            payload={"result_preview": str(result)[:500], "resumed_from": record.get("id")},
+        )
+        await app.state.approval.notify(
+            f"✅ `{record.get('agent_id')}` finished approved task:\n{str(result)[:1500]}"
+        )
+    except Exception as e:
+        logger.exception("Resume after approval failed")
+        audit.log_event(
+            event_type="agent.invoke.error",
+            agent_id=record.get("agent_id"),
+            invocation_id=record.get("invocation_id"),
+            payload={"error": str(e), "resumed_from": record.get("id")},
+        )
+        await app.state.approval.notify(
+            f"⚠️ `{record.get('agent_id')}` approved task FAILED: {str(e)[:500]}"
+        )
+
+
+@app.post("/slack/interactions")
+async def slack_interactions(request: Request, background: BackgroundTasks):
+    """
+    Slack interactivity endpoint. Approve/Reject button clicks POST here as
+    form-encoded `payload=<json>`. Verified with the Slack signing secret —
+    NOT the runtime API key (Slack can't send custom headers).
+    """
+    body = await request.body()
+
+    if settings.slack_signing_secret:
+        from slack_sdk.signature import SignatureVerifier
+        verifier = SignatureVerifier(signing_secret=settings.slack_signing_secret)
+        if not verifier.is_valid_request(body, dict(request.headers)):
+            raise HTTPException(401, "Invalid Slack signature")
+    else:
+        logger.warning("SLACK_SIGNING_SECRET not set — /slack/interactions is UNVERIFIED")
+
+    form = await request.form()
+    payload = json.loads(form.get("payload", "{}"))
+
+    actions = payload.get("actions", [])
+    if not actions:
+        return {"ok": True}
+
+    value = actions[0].get("value", "")  # "approve:<id>" | "reject:<id>"
+    if ":" not in value:
+        return {"ok": True}
+    decision_word, approval_id = value.split(":", 1)
+    decision = "approve" if decision_word == "approve" else "reject"
+    approver = (payload.get("user") or {}).get("username") or (payload.get("user") or {}).get("id", "slack-user")
+
+    approval: ApprovalManager = request.app.state.approval
+    audit: AuditLogger = request.app.state.audit
+    gov: GovernanceStore = request.app.state.governance
+
+    try:
+        record = await approval.resolve(
+            approval_id=approval_id, decision=decision, approver=approver
+        )
+    except ValueError:
+        # Already resolved (double click) — acknowledge quietly
+        return {"ok": True, "note": "already resolved"}
+
+    audit.log_event(
+        event_type=f"approval.{decision}",
+        agent_id=record.get("agent_id"),
+        invocation_id=record.get("invocation_id"),
+        payload={"approver": approver, "via": "slack_button"},
+    )
+    gov.record_decision(
+        agent_id=record.get("agent_id", ""),
+        action_type=record.get("action_type"),
+        approved=decision == "approve",
+    )
+
+    if decision == "approve":
+        # Slack needs a response within 3s — run the agent in the background
+        background.add_task(_resume_approved, request.app, record)
+
+    return {"ok": True}
+
+
+# ============================================================
+# GOVERNANCE — spend + trust visibility (weekly digest reads these)
+# ============================================================
+
+@app.get("/spend")
+async def get_spend(request: Request, days: int = 7, _auth: bool = Depends(verify_api_key)):
+    """LLM spend summary: today's total (vs cap), by agent, by model."""
+    gov: GovernanceStore = request.app.state.governance
+    summary = gov.spend_summary(days=days)
+    summary["daily_cap_usd"] = settings.max_daily_llm_spend_usd
+    return summary
+
+
+@app.get("/governance/trust")
+async def get_trust(request: Request, _auth: bool = Depends(verify_api_key)):
+    """Trust counters per (agent, action_type) + flip candidates at threshold."""
+    gov: GovernanceStore = request.app.state.governance
+    return gov.trust_summary(threshold=settings.trust_auto_approve_threshold)
+
+
+class TrustFlipRequest(BaseModel):
+    agent_id: str
+    action_type: str
+    auto_approve: bool
+
+
+@app.post("/governance/trust/flip")
+async def flip_trust(
+    req: TrustFlipRequest, request: Request, _auth: bool = Depends(verify_api_key)
+):
+    """Human-initiated auto-approve flip. The system never calls this itself."""
+    gov: GovernanceStore = request.app.state.governance
+    ok = gov.set_auto_approve(req.agent_id, req.action_type, req.auto_approve)
+    if not ok:
+        raise HTTPException(404, f"No trust record for {req.agent_id}/{req.action_type}")
+    request.app.state.audit.log_event(
+        event_type="trust.flip",
+        agent_id=req.agent_id,
+        payload={"action_type": req.action_type, "auto_approve": req.auto_approve},
+    )
+    return {"agent_id": req.agent_id, "action_type": req.action_type, "auto_approve": req.auto_approve}
+
+
+@app.get("/approvals")
+async def list_pending_approvals(request: Request, _auth: bool = Depends(verify_api_key)):
+    """All pending approvals (also visible as Slack cards)."""
+    approval: ApprovalManager = request.app.state.approval
+    return {"pending": approval.get_pending()}
 
 
 # ============================================================

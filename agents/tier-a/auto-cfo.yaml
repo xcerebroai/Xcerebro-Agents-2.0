@@ -75,3 +75,6 @@ forbidden_actions:
   - "Make tax or legal decisions"
   - "Recommend specific tax strategies (refer to CPA)"
   - "Approve subscription cancellations"
+
+model_routing:
+  tier: premium

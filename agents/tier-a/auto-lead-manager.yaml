@@ -49,3 +49,6 @@ sample_tasks:
   - "Run the weekly CRM cleanup."
   - "How many leads have no follow-up in the last 14 days?"
   - "Lead source breakdown for the last 30 days."
+
+model_routing:
+  tier: balanced

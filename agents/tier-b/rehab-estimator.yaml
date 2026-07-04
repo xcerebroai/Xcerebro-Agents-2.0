@@ -24,3 +24,6 @@ sample_tasks:
 - Rehab estimate from these photos.
 - Wholesaler-grade vs flipper-grade rehab estimate.
 - Rehab cost factors I always forget.
+
+model_routing:
+  tier: balanced

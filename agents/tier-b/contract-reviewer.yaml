@@ -23,3 +23,6 @@ sample_tasks:
 - Review this vendor contract — flags?
 - Affiliate agreement — what to negotiate?
 - Employment offer — clauses to review.
+
+model_routing:
+  tier: premium

@@ -46,3 +46,6 @@ sample_tasks:
   - "Plan the Creator Ops cohort launch project."
   - "What's stuck right now?"
   - "Break this goal into tasks: 'Ship the new sales page by Friday.'"
+
+model_routing:
+  tier: balanced

@@ -28,3 +28,6 @@ sample_tasks:
 - Document my podcast recording process as an SOP.
 - Audit existing SOPs for outdated steps.
 - 'New SOP: how the Daily KPI Brief should be reviewed.'
+
+model_routing:
+  tier: balanced

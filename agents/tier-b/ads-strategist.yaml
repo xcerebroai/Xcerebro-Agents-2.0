@@ -53,3 +53,6 @@ sample_tasks:
   - "Run yesterday's ads check."
   - "Why did CPA spike 40% on the cohort campaign?"
   - "I have $500/week to spend on a new offer. Recommend ad strategy."
+
+model_routing:
+  tier: balanced

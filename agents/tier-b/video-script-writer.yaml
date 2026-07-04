@@ -26,3 +26,6 @@ sample_tasks:
 - 'Write a 60-sec Reel script: ''Why most wholesalers fail.'''
 - 'Long-form YouTube script (8-10 min): ''How to find probate deals using public records.'''
 - TikTok-style script — same topic but for the TikTok audience.
+
+model_routing:
+  tier: balanced

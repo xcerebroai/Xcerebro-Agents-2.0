@@ -25,3 +25,6 @@ sample_tasks:
 - Quarterly vendor audit — what should we cut?
 - Negotiate next month's vendor renewal.
 - Onboard new freelancer — checklist.
+
+model_routing:
+  tier: premium

@@ -49,3 +49,6 @@ sample_tasks:
   - "Plan this week. We're launching the cohort Friday."
   - "Diagnose: I've been posting 5 days/week and reach is flat."
   - "What should I post tomorrow on Instagram and Twitter?"
+
+model_routing:
+  tier: balanced

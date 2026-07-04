@@ -25,3 +25,6 @@ sample_tasks:
 - New wholesale lead — score it.
 - Offer letter for a property — what range?
 - Pipeline review — bottleneck stage?
+
+model_routing:
+  tier: premium

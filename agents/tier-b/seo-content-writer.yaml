@@ -25,3 +25,6 @@ sample_tasks:
 - 'Write a 2,500-word blog post: ''How to deploy an AI workforce on Railway.'''
 - Update an existing post that's dropping in rankings.
 - Build a content cluster around 'autonomous agents.'
+
+model_routing:
+  tier: balanced

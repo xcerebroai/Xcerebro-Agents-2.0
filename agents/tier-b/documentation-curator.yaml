@@ -25,3 +25,6 @@ sample_tasks:
 - Audit Notion for stale docs.
 - Reorganize the SOP library by department.
 - Index our Loom library for easy search.
+
+model_routing:
+  tier: economy

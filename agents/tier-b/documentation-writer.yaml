@@ -23,3 +23,6 @@ sample_tasks:
 - Quick-start guide for a feature.
 - Troubleshooting doc for the most common 5 issues.
 - API docs for the agent runtime.
+
+model_routing:
+  tier: balanced

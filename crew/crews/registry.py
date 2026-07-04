@@ -14,6 +14,13 @@ from crewai import Agent, Crew, Task, Process, LLM
 
 from config import settings
 from tools.ghl import get_ghl_tools
+from routing.router import (
+    ModelRouter,
+    TaskContext,
+    load_policy_from_yaml,
+    to_openrouter_slug,
+    cost_for_slug,
+)
 
 
 MODEL_ALIASES = {
@@ -30,6 +37,19 @@ TOOL_LOADERS = {
     "ghl.": get_ghl_tools,
 }
 
+# Maps outbound action types to the declared tool names that imply them.
+# Order = severity: the FIRST matching type classifies the invocation,
+# so a payment-capable agent is gated as "payment" even if it can also email.
+ACTION_TYPE_TOOLS: dict[str, tuple[str, ...]] = {
+    "payment": ("stripe.create_invoice", "stripe.charge", "stripe.create_charge"),
+    "refund": ("stripe.refund", "stripe.create_refund"),
+    "public_post": ("postiz.schedule_post", "postiz.publish"),
+    "email": ("email.send", "gmail.send"),
+    "dm": ("sms.send", "instagram.send_dm", "ig.send_dm"),
+    "crm_update": ("ghl.update_contact", "ghl.add_tag", "ghl.merge_duplicates", "ghl.create_contact"),
+    "calendar_booking": ("calendar.create_event", "calendar.update_event"),
+}
+
 
 class CrewRegistry:
     """Loads + indexes all agent and crew definitions."""
@@ -40,6 +60,12 @@ class CrewRegistry:
         self.crews: dict[str, dict] = {}
         self.workflow_map: dict[str, str] = {}
         self._memory = None  # MemoryManager, initialized lazily
+        self._governance = None  # GovernanceStore, injected by main.py at startup
+        self._router = ModelRouter()
+
+    def set_governance(self, store) -> None:
+        """Inject the shared GovernanceStore (approvals, trust, spend)."""
+        self._governance = store
 
     # ── memory ────────────────────────────────────────────────────────────────
 
@@ -148,9 +174,74 @@ class CrewRegistry:
 
     # ── approval ──────────────────────────────────────────────────────────────
 
-    def requires_approval(self, agent_id: str, task: str) -> bool:
-        # ponytail: approval disabled until /slack/interactions endpoint exists
-        return False
+    def classify_action_type(self, agent_id: str) -> Optional[str]:
+        """Highest-severity outbound action type this agent's declared tools imply."""
+        agent_def = self.agents.get(agent_id) or {}
+        declared = set(agent_def.get("permissions", {}).get("can_call_tools", []))
+        for action_type, tool_names in ACTION_TYPE_TOOLS.items():
+            if declared.intersection(tool_names):
+                return action_type
+        return None
+
+    def requires_approval(self, agent_id: str, task: str) -> tuple[bool, Optional[str]]:
+        """
+        Decide whether an invocation needs a human approval gate.
+
+        Returns (needs_approval, action_type). Graduated autonomy: an earned,
+        human-flipped auto_approve for this (agent, action_type) skips the gate
+        even for always_require_approval agents — earning trust is the point.
+        """
+        agent_def = self.agents.get(agent_id) or {}
+        perms = agent_def.get("permissions", {})
+        action_type = self.classify_action_type(agent_id)
+
+        if action_type and self._governance and self._governance.is_auto_approved(agent_id, action_type):
+            return False, action_type
+
+        if perms.get("always_require_approval"):
+            return True, action_type or "general"
+
+        if action_type and getattr(settings, f"approval_required_for_{action_type}", False):
+            return True, action_type
+
+        return False, action_type
+
+    # ── limits (spend cap + rate limit) ───────────────────────────────────────
+
+    def check_limits(self) -> None:
+        """Raise RuntimeError before any LLM work if daily spend cap or hourly rate is hit."""
+        gov = self._governance
+        if not gov:
+            return
+        cap = settings.max_daily_llm_spend_usd
+        if cap:
+            spent = gov.today_spend()
+            if spent >= cap:
+                raise RuntimeError(
+                    f"SPEND_CAP: daily LLM spend ${spent:.2f} >= ${cap:.2f} cap — task refused"
+                )
+        if settings.max_tasks_per_hour and gov.calls_last_hour() >= settings.max_tasks_per_hour:
+            raise RuntimeError(
+                f"RATE_LIMIT: {settings.max_tasks_per_hour} tasks/hour reached — task refused"
+            )
+
+    def _log_usage(self, agent_id: str, model_slug: str, crew: "Crew") -> None:
+        """Persist token usage + estimated cost from a finished crew run."""
+        gov = self._governance
+        if not gov:
+            return
+        usage = getattr(crew, "usage_metrics", None)
+        if not usage:
+            return
+        tin = getattr(usage, "prompt_tokens", 0) or 0
+        tout = getattr(usage, "completion_tokens", 0) or 0
+        gov.log_llm_call(
+            agent_id=agent_id,
+            model_slug=model_slug,
+            input_tokens=tin,
+            output_tokens=tout,
+            cost_usd=cost_for_slug(model_slug, tin, tout),
+        )
 
     # ── agent invocation ──────────────────────────────────────────────────────
 
@@ -159,7 +250,8 @@ class CrewRegistry:
         if not agent_def:
             raise ValueError(f"Agent {agent_id} not found")
 
-        llm = self._build_llm(agent_def)
+        self.check_limits()
+        llm, model_slug = self._build_llm(agent_def, task=task)
         tools = self._build_tools(agent_def)
 
         # Inject relevant past memories into the task description
@@ -198,6 +290,8 @@ class CrewRegistry:
         result = crew.kickoff(inputs=context)
         result_str = str(result)
 
+        self._log_usage(agent_id, model_slug, crew)
+
         # Store this invocation as a memory for future runs
         if mem:
             summary = f"Task: {task[:200]}\nResult: {result_str[:600]}"
@@ -215,16 +309,27 @@ class CrewRegistry:
         if not crew_def:
             raise ValueError(f"Crew {crew_id} not found")
 
+        self.check_limits()
+
         agents = []
         tasks = []
         agent_lookup = {}
+        crew_model_slug = ""  # last member's slug — good enough for crew-level cost attribution
+
+        # Map each member to their task text so routing can see it (keyword escalation)
+        task_by_agent = {
+            t.get("agent_id"): t.get("description", "")
+            for t in crew_def.get("tasks", [])
+        }
 
         for member in crew_def.get("members", []):
             agent_def = self.agents.get(member["agent_id"])
             if not agent_def:
                 logger.warning(f"Agent {member['agent_id']} not found, skipping")
                 continue
-            llm = self._build_llm(agent_def)
+            llm, crew_model_slug = self._build_llm(
+                agent_def, task=task_by_agent.get(member["agent_id"], "")
+            )
             tools = self._build_tools(agent_def)
             cw_agent = Agent(
                 role=agent_def.get("role", member["agent_id"]),
@@ -250,7 +355,7 @@ class CrewRegistry:
             tasks.append(cw_task)
 
         if crew_def.get("hierarchical"):
-            manager_llm = self._build_llm({})
+            manager_llm, _ = self._build_llm({})
             crew = Crew(
                 agents=agents,
                 tasks=tasks,
@@ -267,6 +372,7 @@ class CrewRegistry:
             )
 
         result = crew.kickoff(inputs=inputs)
+        self._log_usage(crew_id, crew_model_slug or "unknown", crew)
         return str(result)
 
     async def resume_after_approval(self, approval_record: dict) -> Any:
@@ -278,16 +384,35 @@ class CrewRegistry:
 
     # ── LLM builder ───────────────────────────────────────────────────────────
 
-    def _build_llm(self, agent_def: dict):
-        model = agent_def.get("llm_model", settings.default_llm_model)
-        if model in MODEL_ALIASES:
-            model = MODEL_ALIASES[model]
-        if model:
-            model = model.replace("openrouter/", "")
+    def _build_llm(self, agent_def: dict, task: str = "") -> tuple[LLM, str]:
+        """
+        Build the LLM for an agent. Returns (llm, openrouter_slug).
+
+        When routing is enabled, the ModelRouter picks the tier model
+        (economy/balanced/premium per agent YAML `model_routing`, with keyword
+        escalation on the task text). Execution ALWAYS goes through OpenRouter —
+        routing only changes which slug we ask it for.
+        """
+        if settings.routing_enabled and agent_def:
+            policy = load_policy_from_yaml(agent_def)
+            decision = self._router.route(policy, TaskContext(
+                agent_id=agent_def.get("id", "unknown"),
+                task_description=task or "",
+            ))
+            model = to_openrouter_slug(decision.model_id)
+            logger.info(
+                f"[routing] {agent_def.get('id', '?')} -> {model} ({decision.reason})"
+            )
+        else:
+            model = agent_def.get("llm_model", settings.default_llm_model)
+            if model in MODEL_ALIASES:
+                model = MODEL_ALIASES[model]
+            if model:
+                model = model.replace("openrouter/", "")
 
         import os
         api_key = getattr(settings, "openrouter_api_key", None) or os.getenv("OPENROUTER_API_KEY")
         if not api_key:
             raise ValueError("Missing OPENROUTER_API_KEY in Railway variables.")
 
-        return LLM(model=f"openrouter/{model}", api_key=api_key)
+        return LLM(model=f"openrouter/{model}", api_key=api_key), model

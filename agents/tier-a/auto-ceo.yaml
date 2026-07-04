@@ -95,3 +95,6 @@ delegation_rules:
     delegate_to: auto-cmo
   - condition: "Task involves sales pipeline, lead flow, or call performance"
     delegate_to: auto-sales-manager
+
+model_routing:
+  tier: balanced

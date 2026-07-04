@@ -24,3 +24,6 @@ sample_tasks:
 - Monthly competitive scan — what changed?
 - Competitor just launched X — what does this mean for us?
 - Pricing comparison across the top 5 competitors.
+
+model_routing:
+  tier: balanced

@@ -25,3 +25,6 @@ sample_tasks:
 - Integrate tool A with tool B via webhooks.
 - Custom n8n node for a niche tool.
 - Document the GHL and Stripe integration.
+
+model_routing:
+  tier: balanced

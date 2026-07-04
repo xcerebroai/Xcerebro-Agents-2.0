@@ -51,8 +51,14 @@ class Settings(BaseSettings):
 
     # ---- Slack approval ----
     slack_bot_token: Optional[str] = None
+    slack_signing_secret: Optional[str] = None  # verifies /slack/interactions payloads
     slack_approval_channel_id: Optional[str] = None
     slack_notifications_channel_id: Optional[str] = None
+
+    # ---- Graduated autonomy ----
+    # Clean approvals per (agent, action_type) before the weekly digest
+    # proposes flipping auto_approve. A human flips it, never the system.
+    trust_auto_approve_threshold: int = 10
 
     # ---- Cost controls ----
     max_tokens_per_task: int = 4000

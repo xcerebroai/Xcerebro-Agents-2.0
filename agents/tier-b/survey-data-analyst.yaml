@@ -24,3 +24,6 @@ sample_tasks:
 - Analyze last quarter's NPS responses for themes.
 - Customer interview transcripts — top 5 patterns.
 - Synthesize 50 exit survey responses.
+
+model_routing:
+  tier: economy

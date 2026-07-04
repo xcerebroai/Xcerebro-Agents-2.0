@@ -48,3 +48,6 @@ sample_tasks:
   - "Analyze this property: 11311 Begonia Rock, San Antonio TX 78245"
   - "Run comparables for last 90 days within 0.5 mi of this property"
   - "Estimate MAO for this wholesale deal: $200K ARV, $30K repair, $60K assignment"
+
+model_routing:
+  tier: balanced

@@ -45,3 +45,6 @@ sample_tasks:
   - "New lead magnet: 'AI Workforce Setup Cheatsheet' for IG audience."
   - "Repurpose this Reel into a free 1-page guide."
   - "Lead magnet for tax-delinquent operators that leads to Tier 3 DFY."
+
+model_routing:
+  tier: balanced

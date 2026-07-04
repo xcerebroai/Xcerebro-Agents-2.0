@@ -25,3 +25,6 @@ sample_tasks:
 - Discovery call script for $5K coaching.
 - 'Objection handler: ''I need to think about it.'''
 - 'Follow-up sequence: 3 messages over 7 days for a no-show.'
+
+model_routing:
+  tier: balanced

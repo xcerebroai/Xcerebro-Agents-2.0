@@ -26,3 +26,6 @@ sample_tasks:
 - What's the optimal posting schedule for my audience?
 - Audit my last 30 posts — what's working?
 - Hashtag strategy for the Operator audience.
+
+model_routing:
+  tier: balanced

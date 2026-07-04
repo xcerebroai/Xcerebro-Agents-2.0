@@ -25,3 +25,6 @@ sample_tasks:
 - What's driving the MRR growth this quarter?
 - Segment revenue by acquisition channel.
 - Top 10 customers — concentration risk?
+
+model_routing:
+  tier: balanced
