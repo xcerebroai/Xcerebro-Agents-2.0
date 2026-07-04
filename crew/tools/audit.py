@@ -12,6 +12,8 @@ from loguru import logger
 from sqlalchemy import create_engine, Column, String, DateTime, JSON, Text, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from tools.db import create_all_with_retry
+
 Base = declarative_base()
 
 
@@ -35,7 +37,7 @@ class AuditLogger:
         self.database_url = database_url
         try:
             self.engine = create_engine(database_url, pool_pre_ping=True)
-            Base.metadata.create_all(self.engine)
+            create_all_with_retry(self.engine, Base)
             self.SessionLocal = sessionmaker(bind=self.engine)
             self.enabled = True
             logger.info("Audit logger initialized")
