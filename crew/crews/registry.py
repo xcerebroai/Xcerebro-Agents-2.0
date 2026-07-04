@@ -228,7 +228,7 @@ class CrewRegistry:
             )
 
     def _log_usage(self, agent_id: str, model_slug: str, crew: "Crew") -> None:
-        """Persist token usage + estimated cost from a finished crew run."""
+        """Persist token usage + estimated cost from a finished single-agent run."""
         gov = self._governance
         if not gov:
             return
@@ -244,6 +244,45 @@ class CrewRegistry:
             output_tokens=tout,
             cost_usd=cost_for_slug(model_slug, tin, tout),
         )
+
+    def _log_crew_usage(self, crew_id: str, member_models: list[tuple[str, str]], crew: "Crew") -> None:
+        """
+        Persist token usage + cost for a multi-agent crew run.
+
+        CrewAI's Crew.usage_metrics is a single aggregate across every member's
+        LLM calls — it doesn't break tokens down per agent/model. Splitting it
+        evenly across members isn't exact (a verbose premium-tier agent likely
+        used more of the tokens than a terse economy-tier one), but it fixes the
+        real bug: previously ALL cost was attributed to the LAST member's model,
+        so a crew with one premium (Opus) agent and three cheap ones logged as
+        if 100% of spend was the cheap model. Even split means both the total
+        (what the kill switch checks) and the by-model breakdown reflect every
+        model actually used, not just the last one.
+        # ponytail: even split, not true per-agent attribution — upgrade path is
+        # a CrewAI task_callback capturing each task's own token usage, if the
+        # installed CrewAI version exposes it.
+        """
+        gov = self._governance
+        if not gov or not member_models:
+            return
+        usage = getattr(crew, "usage_metrics", None)
+        if not usage:
+            return
+        total_in = getattr(usage, "prompt_tokens", 0) or 0
+        total_out = getattr(usage, "completion_tokens", 0) or 0
+        n = len(member_models)
+        share_in, share_out = total_in // n, total_out // n
+        for i, (member_agent_id, model_slug) in enumerate(member_models):
+            # remainder from integer division goes to the first member
+            tin = share_in + (total_in % n if i == 0 else 0)
+            tout = share_out + (total_out % n if i == 0 else 0)
+            gov.log_llm_call(
+                agent_id=f"{crew_id}:{member_agent_id}",
+                model_slug=model_slug,
+                input_tokens=tin,
+                output_tokens=tout,
+                cost_usd=cost_for_slug(model_slug, tin, tout),
+            )
 
     # ── agent invocation ──────────────────────────────────────────────────────
 
@@ -316,7 +355,7 @@ class CrewRegistry:
         agents = []
         tasks = []
         agent_lookup = {}
-        crew_model_slug = ""  # last member's slug — good enough for crew-level cost attribution
+        member_models: list[tuple[str, str]] = []  # (agent_id, model_slug) per member that actually ran
 
         # Map each member to their task text so routing can see it (keyword escalation)
         task_by_agent = {
@@ -329,9 +368,10 @@ class CrewRegistry:
             if not agent_def:
                 logger.warning(f"Agent {member['agent_id']} not found, skipping")
                 continue
-            llm, crew_model_slug = self._build_llm(
+            llm, member_model_slug = self._build_llm(
                 agent_def, task=task_by_agent.get(member["agent_id"], "")
             )
+            member_models.append((member["agent_id"], member_model_slug))
             tools = self._build_tools(agent_def)
             cw_agent = Agent(
                 role=agent_def.get("role", member["agent_id"]),
@@ -374,7 +414,7 @@ class CrewRegistry:
             )
 
         result = crew.kickoff(inputs=inputs)
-        self._log_usage(crew_id, crew_model_slug or "unknown", crew)
+        self._log_crew_usage(crew_id, member_models, crew)
         return str(result)
 
     async def resume_after_approval(self, approval_record: dict) -> Any:
