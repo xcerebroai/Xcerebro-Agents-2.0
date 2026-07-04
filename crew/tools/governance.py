@@ -21,6 +21,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from tools.db import create_all_with_retry
+
 Base = declarative_base()
 
 
@@ -71,7 +73,7 @@ class GovernanceStore:
     def __init__(self, database_url: str):
         try:
             self.engine = create_engine(database_url, pool_pre_ping=True)
-            Base.metadata.create_all(self.engine)
+            create_all_with_retry(self.engine, Base)
             self.SessionLocal = sessionmaker(bind=self.engine)
             self.enabled = True
             logger.info("Governance store initialized")
