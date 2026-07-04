@@ -14,6 +14,7 @@ from crewai import Agent, Crew, Task, Process, LLM
 
 from config import settings
 from tools.ghl import get_ghl_tools
+from tools.sync_log import get_sync_log_tools
 from routing.router import (
     ModelRouter,
     TaskContext,
@@ -35,6 +36,7 @@ MODEL_ALIASES = {
 # Add new tool families here as they are implemented.
 TOOL_LOADERS = {
     "ghl.": get_ghl_tools,
+    "sync_log.": get_sync_log_tools,
 }
 
 # Maps outbound action types to the declared tool names that imply them.
