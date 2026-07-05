@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     n8n_base_url: Optional[str] = None
     n8n_api_key: Optional[str] = None
     n8n_webhook_url: Optional[str] = None
+    n8n_bridge_secret: Optional[str] = None  # shared secret for agent email/calendar webhooks
+
+    # ---- ClickUp ----
+    clickup_api_key: Optional[str] = None
+    clickup_team_id: Optional[str] = None
 
     # ---- Dify integration ----
     dify_base_url: Optional[str] = None

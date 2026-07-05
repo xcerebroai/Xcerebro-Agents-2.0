@@ -15,6 +15,10 @@ from crewai import Agent, Crew, Task, Process, LLM
 from config import settings
 from tools.ghl import get_ghl_tools
 from tools.sync_log import get_sync_log_tools
+from tools.business_db import get_business_db_tools
+from tools.slack_tools import get_slack_tools
+from tools.clickup import get_clickup_tools
+from tools.n8n_bridge import get_n8n_bridge_tools
 from routing.router import (
     ModelRouter,
     TaskContext,
@@ -37,6 +41,13 @@ MODEL_ALIASES = {
 TOOL_LOADERS = {
     "ghl.": get_ghl_tools,
     "sync_log.": get_sync_log_tools,
+    "rehabbooks.": get_business_db_tools,
+    "dealengine.": get_business_db_tools,
+    "postgres.": get_business_db_tools,
+    "slack.": get_slack_tools,
+    "clickup.": get_clickup_tools,
+    "email.": get_n8n_bridge_tools,
+    "calendar.": get_n8n_bridge_tools,
 }
 
 # Maps outbound action types to the declared tool names that imply them.
@@ -166,9 +177,13 @@ class CrewRegistry:
                     break
 
         tools = []
+        seen = set()  # dedupe: several prefixes can map to the same loader/tool (e.g. rehabbooks. + dealengine.)
         for prefix, names in by_prefix.items():
             loader = TOOL_LOADERS[prefix]
-            tools.extend(loader(names))
+            for tool in loader(names):
+                if tool.name not in seen:
+                    seen.add(tool.name)
+                    tools.append(tool)
 
         if tools:
             logger.debug(f"Wired {len(tools)} tool(s): {[t.name for t in tools]}")
