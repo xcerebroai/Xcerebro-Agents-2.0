@@ -14,6 +14,7 @@ import re
 import uuid
 from typing import Any
 
+import httpx
 from loguru import logger
 from sqlalchemy import create_engine, text
 
@@ -38,6 +39,56 @@ CREATE INDEX IF NOT EXISTS idx_comms_messages_conv
 
 DEFAULT_AGENT = "auto-ceo"
 HISTORY_WINDOW = 10  # ponytail: last-10 window, add summarization if threads get long
+
+# Live routing table for the pre-router: which specialist owns which domain.
+# Deliberately small and hardcoded — leadership rarely changes, and the CEO
+# catches everything ambiguous. (@-prefix always overrides the router.)
+ROSTER = {
+    "auto-lead-manager": "leads, CRM contacts, GHL pipeline, conversations, follow-ups",
+    "auto-sales-manager": "sales pipeline stages, calls booked/completed, closing deals",
+    "auto-cfo": "money, budgets, expenses, P&L, cash flow, net worth, investments",
+    "auto-project-manager": "ClickUp tasks, quarterly rocks, project status, deadlines",
+    "auto-cmo": "marketing, content, social media, campaigns, brand",
+    "auto-coo": "operations, workflows, automations, team process",
+    "auto-executive-assistant": "calendar, scheduling, email drafting, reminders",
+    "auto-ceo": "strategy, vision, priorities, cross-domain, anything else",
+}
+
+ROUTER_MODEL = "deepseek/deepseek-chat"  # economy tier: ~$0.0002/route
+
+
+async def _route_agent(message: str) -> str:
+    """One cheap LLM call picks the specialist. Any failure → CEO."""
+    if not settings.openrouter_api_key:
+        return DEFAULT_AGENT
+    roster_lines = "\n".join(f"- {aid}: {desc}" for aid, desc in ROSTER.items())
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {settings.openrouter_api_key}"},
+                json={
+                    "model": ROUTER_MODEL,
+                    "max_tokens": 16,
+                    "temperature": 0,
+                    "messages": [
+                        {"role": "system", "content": (
+                            "Route this chat message to the team member who owns the topic. "
+                            f"Team:\n{roster_lines}\n"
+                            "Reply with exactly one id from the list, nothing else."
+                        )},
+                        {"role": "user", "content": message[:1000]},
+                    ],
+                },
+            )
+        candidate = resp.json()["choices"][0]["message"]["content"].strip().strip("`").strip()
+        if candidate in ROSTER:
+            return candidate
+        logger.warning(f"chat router returned unknown id {candidate!r} — using CEO")
+    except Exception as e:
+        logger.warning(f"chat router failed ({e}) — using CEO")
+    return DEFAULT_AGENT
+
 
 # High-precision action verbs. A question to an action-capable agent must NOT
 # demand a sign-off; a false negative here is still safe because the invoke
@@ -117,6 +168,13 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
     if not clean_message:
         return {"agent_id": agent_id, "reply": "I got an empty message — what do you need?"}
 
+    # No explicit @-target → cheap classifier picks the owning specialist
+    routed = False
+    if agent_id == DEFAULT_AGENT and not message.strip().startswith("@"):
+        picked = await _route_agent(clean_message)
+        if picked != DEFAULT_AGENT and registry.get_agent(picked):
+            agent_id, routed = picked, True
+
     history = _load_history(conversation_id)
     _store(conversation_id, channel, "user", sender, clean_message)
 
@@ -126,7 +184,8 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
         agent_id=agent_id,
         invocation_id=invocation_id,
         payload={"channel": channel, "conversation_id": conversation_id,
-                 "sender": sender, "text": clean_message[:500]},
+                 "sender": sender, "text": clean_message[:500],
+                 "routed_to": agent_id if routed else None},
     )
 
     task = (
