@@ -73,6 +73,9 @@ permissions:
   can_call_tools:
     - postgres.audit_log.read
     - slack.post_message
+    - kb.search            # knowledge base (V/TO, SOPs, ingested docs)
+    - kb.sync_drive_doc    # refresh a Drive doc into the knowledge base
+    - n8n.read_workflows   # see the automation layer
     - clickup.read_tasks
     - clickup.get_task
     - clickup.update_task

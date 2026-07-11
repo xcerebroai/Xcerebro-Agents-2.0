@@ -23,6 +23,8 @@ from loguru import logger
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from tools.embeddings import embed as shared_embed, to_vec_param
+
 
 # ── schema ────────────────────────────────────────────────────────────────────
 
@@ -49,9 +51,6 @@ CREATE INDEX IF NOT EXISTS idx_memories_embedding
     WHERE embedding IS NOT NULL;
 """
 
-EMBEDDING_MODEL = "text-embedding-3-small"
-
-
 class MemoryManager:
     """Persistent agent memory with semantic retrieval via pgvector."""
 
@@ -59,13 +58,12 @@ class MemoryManager:
         # openrouter_api_key param kept for call-site compatibility; embeddings
         # need a real OpenAI key (OpenRouter has no /embeddings endpoint).
         self.engine = create_engine(database_url, pool_pre_ping=True)
-        self._api_key = os.getenv("OPENAI_API_KEY", "")
+        self._api_key = os.getenv("OPENAI_API_KEY", "")  # kept for tests/introspection
         if not self._api_key:
             logger.error(
                 "MemoryManager: OPENAI_API_KEY missing — semantic memory DISABLED, "
                 "falling back to recency-only retrieval. Set it in Railway variables."
             )
-        self._client = None
         self._migrate()
 
     # ── setup ─────────────────────────────────────────────────────────────────
@@ -83,34 +81,14 @@ class MemoryManager:
         except SQLAlchemyError as e:
             logger.warning(f"MemoryManager: migration issue (degraded mode): {e}")
 
-    # ── embeddings ────────────────────────────────────────────────────────────
-
-    def _get_client(self):
-        if self._client is None:
-            import openai
-            self._client = openai.OpenAI(api_key=self._api_key)
-        return self._client
+    # ── embeddings (shared helper — see tools/embeddings.py) ─────────────────
 
     def _embed(self, text_input: str) -> Optional[list[float]]:
-        """Embed text via OpenAI. Returns None (loudly) on failure."""
-        if not self._api_key:
-            return None
-        try:
-            response = self._get_client().embeddings.create(
-                model=EMBEDDING_MODEL,
-                input=text_input[:8000],
-            )
-            return response.data[0].embedding
-        except Exception as e:
-            logger.error(f"MemoryManager: embedding FAILED (semantic search degraded): {e}")
-            return None
+        return shared_embed(text_input)
 
     @staticmethod
     def _vec_param(embedding: Optional[list[float]]) -> Optional[str]:
-        """pgvector accepts its text form '[0.1,0.2,...]' — pass as a bound param."""
-        if not embedding:
-            return None
-        return "[" + ",".join(repr(float(v)) for v in embedding) + "]"
+        return to_vec_param(embedding)
 
     # ── write ─────────────────────────────────────────────────────────────────
 

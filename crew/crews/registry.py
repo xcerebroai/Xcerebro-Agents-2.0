@@ -19,6 +19,8 @@ from tools.business_db import get_business_db_tools
 from tools.slack_tools import get_slack_tools
 from tools.clickup import get_clickup_tools
 from tools.n8n_bridge import get_n8n_bridge_tools
+from tools.knowledge import get_kb_tools
+from tools.n8n_tools import get_n8n_tools
 from routing.router import (
     ModelRouter,
     TaskContext,
@@ -49,6 +51,9 @@ TOOL_LOADERS = {
     "email.": get_n8n_bridge_tools,
     "calendar.": get_n8n_bridge_tools,
     "drive.": get_n8n_bridge_tools,
+    "kb.": get_kb_tools,
+    "dify.": get_kb_tools,  # 50 agents declare dify.knowledge_base.* — resolves to the pgvector KB
+    "n8n.": get_n8n_tools,
 }
 
 # Maps outbound action types to the declared tool names that imply them.
