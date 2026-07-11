@@ -379,6 +379,14 @@ class CrewRegistry:
             if vto:
                 full_task = f"{full_task}\n\n{vto}"
 
+        # Context goes into the task text, NOT kickoff(inputs=...): non-empty
+        # inputs turn on CrewAI {placeholder} interpolation, which crashes on
+        # literal braces in injected memories (observed: a stored '{"ok": ...}'
+        # tool result killed every chat invoke)
+        if context:
+            ctx_lines = "\n".join(f"- {k}: {v}" for k, v in context.items())
+            full_task = f"{full_task}\n\nInvocation context:\n{ctx_lines}"
+
         cw_agent = Agent(
             role=agent_def.get("role", agent_id),
             goal=agent_def.get("goal", "Complete the assigned task"),
@@ -407,7 +415,7 @@ class CrewRegistry:
         # free — otherwise a running crew blocks /health, approvals, and the
         # watchdog for the whole worker (observed wedging the service 2026-07-11)
         import asyncio
-        result = await asyncio.to_thread(crew.kickoff, inputs=context)
+        result = await asyncio.to_thread(crew.kickoff)
         result_str = str(result)
 
         self._log_usage(agent_id, model_slug, crew)
