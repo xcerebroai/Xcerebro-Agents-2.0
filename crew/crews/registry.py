@@ -74,6 +74,13 @@ ACTION_TYPE_TOOLS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+# Every declared tool name that implies a gated outbound action. Chat invokes
+# strip these when the message didn't ask for an action, so a question to an
+# email-capable agent doesn't demand a human sign-off.
+GATED_TOOL_NAMES: frozenset[str] = frozenset(
+    name for names in ACTION_TYPE_TOOLS.values() for name in names
+)
+
 
 class CrewRegistry:
     """Loads + indexes all agent and crew definitions."""
@@ -206,9 +213,11 @@ class CrewRegistry:
 
     # ── tool wiring ───────────────────────────────────────────────────────────
 
-    def _build_tools(self, agent_def: dict) -> list:
+    def _build_tools(self, agent_def: dict, include_gated: bool = True) -> list:
         """Instantiate tools declared in can_call_tools."""
         tool_names: list[str] = agent_def.get("permissions", {}).get("can_call_tools", [])
+        if not include_gated:
+            tool_names = [n for n in tool_names if n not in GATED_TOOL_NAMES]
         if not tool_names:
             return []
 
@@ -345,14 +354,15 @@ class CrewRegistry:
 
     # ── agent invocation ──────────────────────────────────────────────────────
 
-    async def invoke(self, agent_id: str, task: str, context: dict) -> Any:
+    async def invoke(self, agent_id: str, task: str, context: dict,
+                     include_gated_tools: bool = True) -> Any:
         agent_def = self.agents.get(agent_id)
         if not agent_def:
             raise ValueError(f"Agent {agent_id} not found")
 
         self.check_limits()
         llm, model_slug = self._build_llm(agent_def, task=task)
-        tools = self._build_tools(agent_def)
+        tools = self._build_tools(agent_def, include_gated=include_gated_tools)
 
         # Inject relevant past memories into the task description
         memory_context = ""

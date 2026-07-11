@@ -39,6 +39,14 @@ CREATE INDEX IF NOT EXISTS idx_comms_messages_conv
 DEFAULT_AGENT = "auto-ceo"
 HISTORY_WINDOW = 10  # ponytail: last-10 window, add summarization if threads get long
 
+# High-precision action verbs. A question to an action-capable agent must NOT
+# demand a sign-off; a false negative here is still safe because the invoke
+# then runs with gated tools stripped (the agent can't fire what isn't loaded).
+ACTION_INTENT = re.compile(
+    r"\b(send|email|publish|schedule|book|charge|refund|invoice|pay|delete|cancel|assign|create)\b",
+    re.IGNORECASE,
+)
+
 _engine = None
 
 
@@ -131,9 +139,13 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
         "you know and say who owns it."
     )
 
-    # Same governance gate as /agents/{id}/invoke — chat is not a side door
+    # Same governance gate as /agents/{id}/invoke — chat is not a side door.
+    # But the gate keys off agent CAPABILITY, so plain questions to an
+    # email-capable agent would gate too: only gate when the message asks for
+    # an action; otherwise run with the gated write tools stripped.
     gate_needed, action_type = registry.requires_approval(agent_id, clean_message)
-    if gate_needed:
+    wants_action = bool(ACTION_INTENT.search(clean_message))
+    if gate_needed and wants_action:
         approval_id = await app.state.approval.request(
             title=f"Approve {agent_id} action (via {channel} chat)",
             description=clean_message,
@@ -154,6 +166,7 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
             agent_id=agent_id,
             task=task,
             context={"channel": channel, "conversation_id": conversation_id},
+            include_gated_tools=not gate_needed,
         )
         reply = str(result).strip() or "(no reply)"
     except Exception as e:
