@@ -12,6 +12,19 @@
 
 CREATE SCHEMA IF NOT EXISTS rehabbooks;
 CREATE SCHEMA IF NOT EXISTS dealengine;
+CREATE SCHEMA IF NOT EXISTS eos;
+
+-- ── EOS: Vision/Traction Organizer (extracted from Google Drive V/TO doc) ─────
+-- Injected into every Tier-A (leadership) agent invocation.
+-- Quarterly rocks live in ClickUp (single source of truth), NOT here.
+
+CREATE TABLE IF NOT EXISTS eos.vto (
+    section    TEXT PRIMARY KEY,   -- mission | vision | core_values | ten_year_target |
+                                   -- marketing_strategy | three_year_picture | one_year_plan | issues
+    content    TEXT NOT NULL,
+    source_doc TEXT,               -- Drive doc name/id it was extracted from
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- ── RehabBooks: accounting, personal finance, investments ────
 

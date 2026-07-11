@@ -43,6 +43,12 @@ permissions:
     - gmail.read_inbox
     - gmail.draft  # requires approval
     - dify.knowledge_base.read
+    - clickup.read_tasks
+    - clickup.get_task
+    - clickup.update_task
+    - clickup.add_comment
+    - drive.search_files
+    - drive.read_file
 
 llm_provider: anthropic
 llm_model: claude-sonnet-4-5

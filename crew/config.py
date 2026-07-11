@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     approval_required_for_calendar_booking: bool = False
     approval_required_for_refund: bool = True
     approval_required_for_payment: bool = True
+    approval_required_for_task_management: bool = True  # ClickUp create/delete/assignee changes
 
     # ---- Logging ----
     log_level: str = "info"

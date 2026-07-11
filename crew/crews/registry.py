@@ -48,6 +48,7 @@ TOOL_LOADERS = {
     "clickup.": get_clickup_tools,
     "email.": get_n8n_bridge_tools,
     "calendar.": get_n8n_bridge_tools,
+    "drive.": get_n8n_bridge_tools,
 }
 
 # Maps outbound action types to the declared tool names that imply them.
@@ -61,6 +62,11 @@ ACTION_TYPE_TOOLS: dict[str, tuple[str, ...]] = {
     "dm": ("sms.send", "instagram.send_dm", "ig.send_dm"),
     "crm_update": ("ghl.update_contact", "ghl.add_tag", "ghl.merge_duplicates", "ghl.create_contact"),
     "calendar_booking": ("calendar.create_event", "calendar.update_event"),
+    # Structural/destructive ClickUp changes gate; status/date/comment updates flow free
+    "task_management": (
+        "clickup.create_task", "clickup.create_subtask", "clickup.create_list",
+        "clickup.update_assignees", "clickup.delete_task",
+    ),
 }
 
 
@@ -79,6 +85,39 @@ class CrewRegistry:
     def set_governance(self, store) -> None:
         """Inject the shared GovernanceStore (approvals, trust, spend)."""
         self._governance = store
+
+    # ── business context (EOS V/TO) ──────────────────────────────────────────
+
+    _vto_cache: tuple[float, str] = (0.0, "")
+
+    def _get_business_context(self) -> str:
+        """
+        V/TO block injected into Tier-A (leadership) invocations so strategy
+        agents always operate from the actual mission/vision/plan. Cached 10 min.
+        Sourced from the eos.vto table (extracted from the Google Drive V/TO doc).
+        """
+        import time
+        ts, cached = self._vto_cache
+        if time.time() - ts < 600:
+            return cached
+        block = ""
+        try:
+            from sqlalchemy import create_engine, text as sql_text
+            engine = create_engine(settings.database_url, pool_pre_ping=True)
+            with engine.connect() as conn:
+                rows = conn.execute(sql_text(
+                    "SELECT section, content FROM eos.vto ORDER BY section"
+                )).fetchall()
+            if rows:
+                lines = ["--- Business context (EOS V/TO) ---"]
+                for r in rows:
+                    lines.append(f"[{r.section}]\n{r.content}")
+                lines.append("--- End business context ---")
+                block = "\n".join(lines)
+        except Exception as e:
+            logger.warning(f"V/TO context unavailable: {e}")
+        self._vto_cache = (time.time(), block)
+        return block
 
     # ── memory ────────────────────────────────────────────────────────────────
 
@@ -319,6 +358,12 @@ class CrewRegistry:
 
         full_task = f"{task}\n\n{memory_context}".strip() if memory_context else task
 
+        # Leadership agents always see the business context (mission/vision/plan)
+        if agent_def.get("_tier") == "a":
+            vto = self._get_business_context()
+            if vto:
+                full_task = f"{full_task}\n\n{vto}"
+
         cw_agent = Agent(
             role=agent_def.get("role", agent_id),
             goal=agent_def.get("goal", "Complete the assigned task"),
@@ -400,12 +445,18 @@ class CrewRegistry:
             agents.append(cw_agent)
             agent_lookup[member["agent_id"]] = cw_agent
 
+        vto = self._get_business_context()
         for task_def in crew_def.get("tasks", []):
             assigned_agent = agent_lookup.get(task_def.get("agent_id"))
             if not assigned_agent and agents:
                 assigned_agent = agents[0]
+            description = task_def["description"]
+            # Tier-A members see the business context inside crews too
+            member_def = self.agents.get(task_def.get("agent_id")) or {}
+            if vto and member_def.get("_tier") == "a":
+                description = f"{description}\n\n{vto}"
             cw_task = Task(
-                description=task_def["description"],
+                description=description,
                 expected_output=task_def.get("expected_output", "Complete result"),
                 agent=assigned_agent,
             )

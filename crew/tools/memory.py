@@ -2,8 +2,10 @@
 Xcerebro 2.0 — Agent Memory Manager
 
 Persistent semantic memory backed by Postgres + pgvector.
-Embeddings run through OpenRouter's OpenAI-compatible endpoint
-so no separate OpenAI API key is required.
+Embeddings via OpenAI text-embedding-3-small (1536 dims). OpenRouter has NO
+embeddings endpoint — routing embeddings through it was the original design's
+silent failure (memory degraded to recency-only from day one). Chat completions
+still go through OpenRouter; only embeddings hit OpenAI directly.
 
 Each agent invocation:
   1. retrieve() — pulls semantically relevant past memories
@@ -15,8 +17,6 @@ Memory is shared across agents — the CEO can read what the CFO wrote.
 
 import os
 import json
-import hashlib
-from datetime import datetime, timezone
 from typing import Optional
 
 from loguru import logger
@@ -49,13 +49,23 @@ CREATE INDEX IF NOT EXISTS idx_memories_embedding
     WHERE embedding IS NOT NULL;
 """
 
+EMBEDDING_MODEL = "text-embedding-3-small"
+
 
 class MemoryManager:
     """Persistent agent memory with semantic retrieval via pgvector."""
 
     def __init__(self, database_url: str, openrouter_api_key: str = ""):
+        # openrouter_api_key param kept for call-site compatibility; embeddings
+        # need a real OpenAI key (OpenRouter has no /embeddings endpoint).
         self.engine = create_engine(database_url, pool_pre_ping=True)
-        self._api_key = openrouter_api_key or os.getenv("OPENROUTER_API_KEY", "")
+        self._api_key = os.getenv("OPENAI_API_KEY", "")
+        if not self._api_key:
+            logger.error(
+                "MemoryManager: OPENAI_API_KEY missing — semantic memory DISABLED, "
+                "falling back to recency-only retrieval. Set it in Railway variables."
+            )
+        self._client = None
         self._migrate()
 
     # ── setup ─────────────────────────────────────────────────────────────────
@@ -71,32 +81,36 @@ class MemoryManager:
                 conn.commit()
             logger.info("MemoryManager: schema ready")
         except SQLAlchemyError as e:
-            # pgvector extension may not be available — degrade gracefully
             logger.warning(f"MemoryManager: migration issue (degraded mode): {e}")
 
     # ── embeddings ────────────────────────────────────────────────────────────
 
+    def _get_client(self):
+        if self._client is None:
+            import openai
+            self._client = openai.OpenAI(api_key=self._api_key)
+        return self._client
+
     def _embed(self, text_input: str) -> Optional[list[float]]:
-        """
-        Embed text via OpenRouter's OpenAI-compatible embeddings endpoint.
-        Returns None if the API key is missing or the call fails.
-        """
+        """Embed text via OpenAI. Returns None (loudly) on failure."""
         if not self._api_key:
             return None
         try:
-            import openai
-            client = openai.OpenAI(
-                api_key=self._api_key,
-                base_url="https://openrouter.ai/api/v1",
-            )
-            response = client.embeddings.create(
-                model="openai/text-embedding-3-small",
-                input=text_input[:8000],  # stay within token limit
+            response = self._get_client().embeddings.create(
+                model=EMBEDDING_MODEL,
+                input=text_input[:8000],
             )
             return response.data[0].embedding
         except Exception as e:
-            logger.warning(f"MemoryManager: embedding failed, using text search: {e}")
+            logger.error(f"MemoryManager: embedding FAILED (semantic search degraded): {e}")
             return None
+
+    @staticmethod
+    def _vec_param(embedding: Optional[list[float]]) -> Optional[str]:
+        """pgvector accepts its text form '[0.1,0.2,...]' — pass as a bound param."""
+        if not embedding:
+            return None
+        return "[" + ",".join(repr(float(v)) for v in embedding) + "]"
 
     # ── write ─────────────────────────────────────────────────────────────────
 
@@ -109,12 +123,12 @@ class MemoryManager:
     ) -> None:
         """Persist a memory. Call after each agent invocation."""
         embedding = self._embed(content)
-        meta = json.dumps(metadata or {})
-        vec_literal = f"'[{','.join(str(v) for v in embedding)}]'" if embedding else "NULL"
-
-        sql = text(f"""
+        # All values bound as params; CAST() instead of :: avoids the colon
+        # bind-parse failure that broke every store() before this fix.
+        sql = text("""
             INSERT INTO agent_memories (agent_id, memory_type, content, embedding, metadata)
-            VALUES (:agent_id, :memory_type, :content, {vec_literal}::vector, :metadata::jsonb)
+            VALUES (:agent_id, :memory_type, :content,
+                    CAST(:embedding AS vector), CAST(:metadata AS jsonb))
         """)
         try:
             with self.engine.connect() as conn:
@@ -122,7 +136,8 @@ class MemoryManager:
                     "agent_id": agent_id,
                     "memory_type": memory_type,
                     "content": content,
-                    "metadata": meta,
+                    "embedding": self._vec_param(embedding),
+                    "metadata": json.dumps(metadata or {}),
                 })
                 conn.commit()
         except SQLAlchemyError as e:
@@ -140,8 +155,8 @@ class MemoryManager:
         """
         Return the most relevant memories for this agent.
 
-        If embeddings are available: semantic (cosine) search.
-        If not: recency fallback (last top_k memories).
+        Embeddings available: semantic (cosine) search via pgvector.
+        Embedding failure (error path only): recency fallback.
 
         Set any_agent=True to search across ALL agents (useful for CEO
         querying what CFO or CMO agents wrote).
@@ -150,17 +165,16 @@ class MemoryManager:
         agent_filter = "" if any_agent else "AND agent_id = :agent_id"
 
         if embedding:
-            vec_literal = f"'[{','.join(str(v) for v in embedding)}]'"
             sql = text(f"""
                 SELECT agent_id, memory_type, content, metadata, created_at,
-                       1 - (embedding <=> {vec_literal}::vector) AS similarity
+                       1 - (embedding <=> CAST(:qvec AS vector)) AS similarity
                 FROM agent_memories
                 WHERE embedding IS NOT NULL {agent_filter}
-                ORDER BY embedding <=> {vec_literal}::vector
+                ORDER BY embedding <=> CAST(:qvec AS vector)
                 LIMIT :top_k
             """)
+            params = {"agent_id": agent_id, "top_k": top_k, "qvec": self._vec_param(embedding)}
         else:
-            # Recency fallback — no vector available
             sql = text(f"""
                 SELECT agent_id, memory_type, content, metadata, created_at,
                        1.0 AS similarity
@@ -169,10 +183,11 @@ class MemoryManager:
                 ORDER BY created_at DESC
                 LIMIT :top_k
             """)
+            params = {"agent_id": agent_id, "top_k": top_k}
 
         try:
             with self.engine.connect() as conn:
-                rows = conn.execute(sql, {"agent_id": agent_id, "top_k": top_k}).fetchall()
+                rows = conn.execute(sql, params).fetchall()
             return [
                 {
                     "agent_id": r.agent_id,
