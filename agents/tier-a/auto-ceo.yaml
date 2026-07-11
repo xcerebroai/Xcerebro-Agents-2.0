@@ -86,6 +86,8 @@ permissions:
     - email.send  # gated (email action type)
     - rehabbooks.supabase.read_transactions  # business_data_query access
     - dealengine.supabase.read_properties
+    - ghl.read_contacts     # CRM visibility — leads live in GHL, not the internal DB
+    - ghl.search_pipeline
 
 llm_provider: anthropic
 llm_model: claude-sonnet-4-5
