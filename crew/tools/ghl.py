@@ -67,17 +67,23 @@ class GHLReadContactsTool(BaseTool):
 
     def _run(self, query: str = "", max_contacts: int = 200) -> str:
         contacts: list = []
-        skip = 0
         page_size = 100
+        # GHL v2 paginates with a cursor (meta.startAfterId/startAfter),
+        # not offset — sending "skip" is a 422
+        start_after_id = ""
+        start_after = None
 
         while len(contacts) < max_contacts:
             params = {
                 "locationId": _location_id(),
                 "limit": page_size,
-                "skip": skip,
             }
             if query:
                 params["query"] = query
+            if start_after_id:
+                params["startAfterId"] = start_after_id
+                if start_after is not None:
+                    params["startAfter"] = start_after
 
             data = _safe_request("GET", f"{GHL_BASE}/contacts/", params=params)
             if "error" in data:
@@ -86,9 +92,11 @@ class GHLReadContactsTool(BaseTool):
             page = data.get("contacts", [])
             contacts.extend(page)
 
-            if len(page) < page_size:
+            meta = data.get("meta", {}) or {}
+            start_after_id = meta.get("startAfterId") or ""
+            start_after = meta.get("startAfter")
+            if len(page) < page_size or not start_after_id:
                 break  # last page
-            skip += page_size
 
         if not contacts:
             return "No contacts found matching that query."
@@ -205,7 +213,7 @@ class GHLSearchPipelineTool(BaseTool):
         if stage_id:
             params["pipeline_stage_id"] = stage_id
         if query:
-            params["query"] = query
+            params["q"] = query  # v2 search param is "q" — "query" is a 422
 
         data = _safe_request("GET", f"{GHL_BASE}/opportunities/search", params=params)
         if "error" in data:
