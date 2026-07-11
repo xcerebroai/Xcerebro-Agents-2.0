@@ -393,7 +393,11 @@ class CrewRegistry:
             verbose=True,
         )
 
-        result = crew.kickoff(inputs=context)
+        # kickoff() is synchronous; run it in a thread so the event loop stays
+        # free — otherwise a running crew blocks /health, approvals, and the
+        # watchdog for the whole worker (observed wedging the service 2026-07-11)
+        import asyncio
+        result = await asyncio.to_thread(crew.kickoff, inputs=context)
         result_str = str(result)
 
         self._log_usage(agent_id, model_slug, crew)
@@ -484,7 +488,8 @@ class CrewRegistry:
                 verbose=True,
             )
 
-        result = crew.kickoff(inputs=inputs)
+        import asyncio
+        result = await asyncio.to_thread(crew.kickoff, inputs=inputs)
         self._log_crew_usage(crew_id, member_models, crew)
         return str(result)
 
