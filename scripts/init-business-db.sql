@@ -16,6 +16,23 @@ CREATE SCHEMA IF NOT EXISTS rehabbooks;
 CREATE SCHEMA IF NOT EXISTS dealengine;
 CREATE SCHEMA IF NOT EXISTS eos;
 CREATE SCHEMA IF NOT EXISTS knowledge;
+CREATE SCHEMA IF NOT EXISTS comms;
+
+-- ── Comms: chat messages from Slack / Telegram / WhatsApp / ClickUp ───────────
+-- Backs POST /chat conversation history (last-N window injected per turn).
+
+CREATE TABLE IF NOT EXISTS comms.messages (
+    id              SERIAL PRIMARY KEY,
+    conversation_id TEXT NOT NULL,       -- chat id / channel+thread_ts / clickup channel id
+    channel         TEXT NOT NULL,       -- slack | telegram | whatsapp | clickup
+    role            TEXT NOT NULL,       -- user | assistant
+    sender          TEXT,                -- kenny | angel | agent id
+    content         TEXT NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_comms_messages_conv
+    ON comms.messages(conversation_id, id DESC);
 
 -- ── Knowledge base (RAG over business documents; pgvector) ────────────────────
 -- Chunked + embedded documents (V/TO, SOPs, contracts) searchable by all
