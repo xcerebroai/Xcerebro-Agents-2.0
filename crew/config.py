@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     slack_signing_secret: Optional[str] = None  # verifies /slack/interactions payloads
     slack_approval_channel_id: Optional[str] = None
     slack_notifications_channel_id: Optional[str] = None
+    slack_chat_channel_id: Optional[str] = None  # dedicated #xcerebro chat channel; bot answers everything there
 
     # ---- Graduated autonomy ----
     # Clean approvals per (agent, action_type) before the weekly digest

@@ -12,6 +12,8 @@ Endpoints:
     GET  /crews                      — list all available crews
     POST /approvals/{approval_id}    — human approval response (manual/API)
     POST /slack/interactions         — Slack button clicks (approve/reject)
+    POST /chat                       — channel-agnostic chat (n8n adapters post here)
+    POST /slack/events               — Slack Events API (chat channel, DMs, mentions)
     GET  /approvals                  — pending approvals
     GET  /spend                      — LLM spend summary + daily cap
     GET  /governance/trust           — graduated-autonomy counters + flip candidates
@@ -27,6 +29,7 @@ Architecture:
 import asyncio
 import json
 import os
+import re
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, date
@@ -41,6 +44,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from comms import handle_chat
 from crews.registry import CrewRegistry
 from tools.audit import AuditLogger
 from tools.approval import ApprovalManager
@@ -559,6 +563,96 @@ async def slack_interactions(request: Request, background: BackgroundTasks):
         # Slack needs a response within 3s — run the agent in the background
         background.add_task(_resume_approved, request.app, record)
 
+    return {"ok": True}
+
+
+# ============================================================
+# CHAT — talk to the team from Slack / Telegram / WhatsApp / ClickUp
+# ============================================================
+
+class ChatRequest(BaseModel):
+    channel: str = Field(..., description="slack | telegram | whatsapp | clickup")
+    conversation_id: str = Field(..., description="Stable id for the conversation thread")
+    sender: str = Field(default="", description="Who is talking, e.g. kenny | angel")
+    text: str = Field(..., description="The message")
+
+
+@app.post("/chat")
+async def chat(req: ChatRequest, request: Request, _auth: bool = Depends(verify_api_key)):
+    """
+    Channel-agnostic chat entrypoint. n8n channel adapters (Telegram,
+    WhatsApp, ClickUp) POST here and deliver the reply back themselves.
+    '@<agent-id> ...' targets a specific agent; default is the CEO.
+    """
+    return await handle_chat(
+        request.app, req.channel, req.conversation_id, req.sender, req.text
+    )
+
+
+def _slack_verified(body: bytes, headers: dict) -> bool:
+    if not settings.slack_signing_secret:
+        logger.warning("SLACK_SIGNING_SECRET not set — Slack endpoint is UNVERIFIED")
+        return True
+    from slack_sdk.signature import SignatureVerifier
+    return SignatureVerifier(
+        signing_secret=settings.slack_signing_secret
+    ).is_valid_request(body, headers)
+
+
+async def _slack_chat_reply(app: FastAPI, channel_id: str, thread_ts: str,
+                            sender: str, text_in: str) -> None:
+    """Background task: run the chat and post the reply into the thread."""
+    try:
+        out = await handle_chat(app, "slack", f"slack:{channel_id}:{thread_ts}", sender, text_in)
+        from slack_sdk import WebClient
+        WebClient(token=settings.slack_bot_token).chat_postMessage(
+            channel=channel_id, thread_ts=thread_ts, text=out["reply"]
+        )
+    except Exception:
+        logger.exception("slack chat reply failed")
+
+
+@app.post("/slack/events")
+async def slack_events(request: Request, background: BackgroundTasks):
+    """
+    Slack Events API. Answers every message in the dedicated chat channel
+    (SLACK_CHAT_CHANNEL_ID), bot DMs, and @mentions anywhere. Verified with
+    the Slack signing secret; ack within 3s, agent runs in the background.
+    """
+    body = await request.body()
+    if not _slack_verified(body, dict(request.headers)):
+        raise HTTPException(401, "Invalid Slack signature")
+
+    data = json.loads(body)
+    if data.get("type") == "url_verification":
+        return {"challenge": data.get("challenge")}
+
+    event = data.get("event", {})
+    etype = event.get("type")
+    # Ignore our own posts, edits, joins, etc. — only fresh human messages
+    if event.get("bot_id") or event.get("subtype"):
+        return {"ok": True}
+
+    channel_id = event.get("channel", "")
+    text_in = (event.get("text") or "").strip()
+    is_chat_channel = bool(settings.slack_chat_channel_id) and channel_id == settings.slack_chat_channel_id
+
+    if etype == "app_mention":
+        if is_chat_channel:
+            return {"ok": True}  # the message event already handles this channel
+        text_in = re.sub(r"<@[A-Z0-9]+>\s*", "", text_in).strip()
+    elif etype == "message":
+        if event.get("channel_type") != "im" and not is_chat_channel:
+            return {"ok": True}
+    else:
+        return {"ok": True}
+
+    if not text_in:
+        return {"ok": True}
+
+    thread_ts = event.get("thread_ts") or event.get("ts", "")
+    sender = event.get("user", "slack-user")
+    background.add_task(_slack_chat_reply, request.app, channel_id, thread_ts, sender, text_in)
     return {"ok": True}
 
 
