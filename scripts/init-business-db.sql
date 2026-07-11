@@ -10,8 +10,49 @@
 -- future n8n form. Idempotent (IF NOT EXISTS everywhere).
 -- ============================================================
 
+CREATE EXTENSION IF NOT EXISTS vector;  -- pgvector, for knowledge.chunks embeddings
+
 CREATE SCHEMA IF NOT EXISTS rehabbooks;
 CREATE SCHEMA IF NOT EXISTS dealengine;
+CREATE SCHEMA IF NOT EXISTS eos;
+CREATE SCHEMA IF NOT EXISTS knowledge;
+
+-- ── Knowledge base (RAG over business documents; pgvector) ────────────────────
+-- Chunked + embedded documents (V/TO, SOPs, contracts) searchable by all
+-- agents via kb.search. Also created idempotently by tools/knowledge.py.
+
+CREATE TABLE IF NOT EXISTS knowledge.documents (
+    id            SERIAL PRIMARY KEY,
+    title         TEXT NOT NULL,
+    source_type   TEXT NOT NULL DEFAULT 'drive',
+    drive_file_id TEXT UNIQUE,
+    synced_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS knowledge.chunks (
+    id          SERIAL PRIMARY KEY,
+    document_id INTEGER NOT NULL REFERENCES knowledge.documents(id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    content     TEXT NOT NULL,
+    embedding   vector(1536)
+);
+
+CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding
+    ON knowledge.chunks USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100)
+    WHERE embedding IS NOT NULL;
+
+-- ── EOS: Vision/Traction Organizer (extracted from Google Drive V/TO doc) ─────
+-- Injected into every Tier-A (leadership) agent invocation.
+-- Quarterly rocks live in ClickUp (single source of truth), NOT here.
+
+CREATE TABLE IF NOT EXISTS eos.vto (
+    section    TEXT PRIMARY KEY,   -- mission | vision | core_values | ten_year_target |
+                                   -- marketing_strategy | three_year_picture | one_year_plan | issues
+    content    TEXT NOT NULL,
+    source_doc TEXT,               -- Drive doc name/id it was extracted from
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- ── RehabBooks: accounting, personal finance, investments ────
 

@@ -24,6 +24,7 @@ Architecture:
     human approves/rejects → action executes or aborts
 """
 
+import asyncio
 import json
 import os
 import uuid
@@ -31,6 +32,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, date
 from pathlib import Path
 from typing import Any, Optional
+
+import httpx
 
 import yaml
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Header, Depends, Request
@@ -67,10 +70,48 @@ async def lifespan(app: FastAPI):
     )
     app.state.last_cap_alert_date = None  # dedupe daily spend-cap Slack alerts
 
+    # n8n watchdog: the scheduler died silently twice (Jul 1, Jul 8) and nobody
+    # noticed for days. This always-on service now checks it every 10 minutes.
+    app.state.n8n_watchdog = asyncio.create_task(_n8n_watchdog(app))
+
     logger.info(f"Loaded {len(app.state.registry.agents)} agents, "
                 f"{len(app.state.registry.crews)} crews")
     yield
     logger.info("Xcerebro 2.0 Agent Runtime shutting down...")
+
+
+async def _n8n_watchdog(app: FastAPI) -> None:
+    """
+    Ping n8n /healthz every 10 minutes. Alert Slack once per outage and once
+    on recovery. n8n's own DB has frozen silently twice — this is the alarm.
+    """
+    if not settings.n8n_base_url:
+        logger.warning("n8n watchdog disabled: N8N_BASE_URL not set")
+        return
+    url = settings.n8n_base_url.rstrip("/") + "/healthz"
+    down = False
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(url)
+            healthy = resp.status_code == 200
+        except Exception:
+            healthy = False
+
+        if not healthy and not down:
+            down = True
+            logger.error("n8n watchdog: n8n is DOWN")
+            await app.state.approval.notify(
+                "🚨 *n8n is DOWN* — scheduled workflows (daily brief, CRM crons, "
+                "email/calendar bridges) are not running. Check the n8n project on Railway "
+                "(its Postgres has a history of freezing — restart Postgres, then n8n)."
+            )
+        elif healthy and down:
+            down = False
+            logger.info("n8n watchdog: n8n recovered")
+            await app.state.approval.notify("✅ n8n is back up — scheduled workflows resumed.")
+
+        await asyncio.sleep(600)
 
 
 app = FastAPI(

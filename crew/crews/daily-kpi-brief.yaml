@@ -25,14 +25,14 @@ members:
   - agent_id: auto-cfo
     role: "Pull revenue, expenses, and cash flow for the last 24 hours and 7 days"
     can_delegate: false
-  - agent_id: auto-cmo
-    role: "Pull content performance for the last 24 hours: top post, worst post, comment volume, DM volume"
+  - agent_id: auto-project-manager
+    role: "Pull ClickUp state: quarterly rocks status, past-due tasks, open tasks by project"
     can_delegate: false
   - agent_id: auto-sales-manager
     role: "Pull pipeline state: new leads, calls booked, calls completed, deals closed"
     can_delegate: false
   - agent_id: auto-ceo
-    role: "Synthesize all three reports into a strategic brief with 1-3 priorities for today"
+    role: "Synthesize all reports into the daily EOS brief with rock status and priorities"
     can_delegate: true
 
 # Whether to run hierarchically (CEO directs) or sequentially (chain)
@@ -48,13 +48,17 @@ tasks:
       Flag any anomalies (refunds, failed payments, unusual spend).
     expected_output: "A concise CFO snapshot in 3-4 bullet points."
 
-  - id: cmo_pull
-    agent_id: auto-cmo
+  - id: clickup_pull
+    agent_id: auto-project-manager
     description: >
-      Pull content performance from the last 24 hours: top-performing post,
-      worst-performing post, total reach, comment volume, DM volume. Identify
-      one pattern worth amplifying or killing.
-    expected_output: "A concise CMO snapshot with one actionable insight."
+      Pull the ClickUp state. First: the "Quarterly Rocks" list in the EOS
+      space — every rock with owner, status, and due date. Second: all open
+      tasks across the workspace — flag anything PAST DUE (include how many
+      days overdue and the assignee). Third: tasks completed in the last
+      24 hours. Be precise: real task names, real dates, real assignees.
+    expected_output: >
+      Rocks list with status per rock+owner; past-due list with days overdue
+      and assignee; completions in the last 24h.
 
   - id: sales_pull
     agent_id: auto-sales-manager
@@ -67,11 +71,20 @@ tasks:
   - id: ceo_synthesize
     agent_id: auto-ceo
     description: >
-      Synthesize the CFO, CMO, and Sales Manager reports into ONE brief
-      strategic narrative. Identify the bottleneck. Recommend 1-3 priorities
-      for the operator today. Keep total output under 250 words.
-      Format for Slack readability with section headers.
-    expected_output: "A strategic morning brief, formatted for Slack, under 250 words."
+      Synthesize the CFO, Project Manager, and Sales Manager reports into the
+      DAILY EOS BRIEF. Sections, in order:
+      1. ROCKS — one line per quarterly rock: name, owner, on-track/off-track.
+      2. PAST DUE — every overdue item with owner and days overdue. Name names.
+      3. TOP 3 TODAY — priorities reasoned from the V/TO (injected in your
+         context) and the fastest realistic path to income. Tie each to a rock
+         or V/TO element.
+      4. MISSING — tasks/actions the plan implies but nobody has created yet.
+      5. DATA BASIS — one line stating what data this brief is grounded in
+         (e.g., "ClickUp metadata + GHL pipeline; no financial data in
+         RehabBooks yet"). Never present reasoning as measurement.
+      On Mondays, expand section 1 into the full L10 scorecard format.
+      Keep total output under 400 words. Format with Slack-friendly headers.
+    expected_output: "The daily EOS brief: rocks, past-due, top-3, missing items, data basis. Under 400 words."
 
 # Output destination
 output:

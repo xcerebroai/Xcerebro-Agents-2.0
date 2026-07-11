@@ -22,6 +22,10 @@ backstory: >
 expected_output: >
   A project plan with task breakdown, owner per task, deadline, and dependencies.
   Or a status update flagging stuck tasks and recommending unblocks.
+  ClickUp discipline is non-negotiable: every project task gets a start date
+  AND a due date (gantt charts depend on both), dependencies are set between
+  sequential tasks, anything non-trivial becomes a parent task with dated
+  subtasks, and every task has exactly one assignee.
 
 permissions:
   always_require_approval: false
@@ -30,7 +34,16 @@ permissions:
     - auto-automation-engineer
   can_call_tools:
     - clickup.read_tasks
+    - clickup.get_task
     - clickup.create_task
+    - clickup.create_subtask
+    - clickup.create_list
+    - clickup.update_task
+    - clickup.update_assignees
+    - clickup.add_comment
+    - clickup.set_dependency
+    - clickup.read_members
+    - clickup.delete_task
     - notion.read_pages
     - notion.update_page
     - slack.post_message

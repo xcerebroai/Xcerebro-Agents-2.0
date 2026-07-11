@@ -42,6 +42,10 @@ permissions:
   can_call_tools:
     - n8n.read_workflows
     - clickup.read_tasks
+    - clickup.get_task
+    - clickup.update_task
+    - clickup.add_comment
+    - clickup.read_members
     - notion.read_pages
     - postgres.audit_log.read
     - slack.post_message

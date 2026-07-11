@@ -42,6 +42,7 @@ rehabbooks.investor_loans— id, lender, principal, rate, payment_due, project_i
 dealengine.properties    — id, address, status(analyzing|under_contract|owned|sold|passed), arv, purchase_price
 dealengine.deal_analyses — id, property_id, strategy(flip|wholesale|buy_hold|subto|creative), offer_price, est_profit, notes
 dealengine.project_draws — id, project_id, amount, status(pending|approved|funded), requested_at
+eos.vto                  — section(mission|vision|core_values|ten_year_target|marketing_strategy|three_year_picture|one_year_plan|issues), content, updated_at
 """.strip()
 
 # single statement, must start with SELECT or WITH, no statement separators

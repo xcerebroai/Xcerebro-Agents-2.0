@@ -111,8 +111,39 @@ class CalendarCreateEventTool(BaseTool):
         })
 
 
+# ── google drive ──────────────────────────────────────────────────────────────
+
+class DriveSearchInput(BaseModel):
+    query: str = Field(description="File name or partial name to search for in Google Drive")
+
+
+class DriveSearchTool(BaseTool):
+    name: str = "drive_search_files"
+    description: str = "Search Google Drive for files by name. Returns file IDs, names, and types."
+    args_schema: Type[BaseModel] = DriveSearchInput
+
+    def _run(self, query: str) -> str:
+        return _bridge_post("drive-search", {"query": query})
+
+
+class DriveReadInput(BaseModel):
+    file_id: str = Field(description="Google Drive file ID (from drive_search_files)")
+
+
+class DriveReadTool(BaseTool):
+    name: str = "drive_read_file"
+    description: str = (
+        "Read a Google Drive file's text content (Google Docs are exported as plain text). "
+        "Use for the EOS V/TO, SOPs, and other business documents."
+    )
+    args_schema: Type[BaseModel] = DriveReadInput
+
+    def _run(self, file_id: str) -> str:
+        return _bridge_post("drive-read", {"file_id": file_id})
+
+
 def get_n8n_bridge_tools(tool_names: list[str]) -> list:
-    """Loader for email.* and calendar.* declared names."""
+    """Loader for email.*, calendar.*, and drive.* declared names."""
     tools = []
     if any(n.startswith("email.send") for n in tool_names):
         tools.append(EmailSendTool())
@@ -122,4 +153,8 @@ def get_n8n_bridge_tools(tool_names: list[str]) -> list:
         tools.append(CalendarReadEventsTool())
     if any(n.startswith("calendar.create") for n in tool_names):
         tools.append(CalendarCreateEventTool())
+    if any(n.startswith("drive.search") for n in tool_names):
+        tools.append(DriveSearchTool())
+    if any(n.startswith("drive.read") for n in tool_names):
+        tools.append(DriveReadTool())
     return tools
