@@ -45,10 +45,8 @@ CREATE TABLE IF NOT EXISTS knowledge.chunks (
     embedding   vector(1536)
 );
 
-CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding
-    ON knowledge.chunks USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 100)
-    WHERE embedding IS NOT NULL
+CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding_hnsw
+    ON knowledge.chunks USING hnsw (embedding vector_cosine_ops)
 """
 
 _engine = None

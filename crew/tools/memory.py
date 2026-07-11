@@ -45,10 +45,8 @@ CREATE TABLE IF NOT EXISTS agent_memories (
 CREATE INDEX IF NOT EXISTS idx_memories_agent_date
     ON agent_memories (agent_id, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_memories_embedding
-    ON agent_memories USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 100)
-    WHERE embedding IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_memories_embedding_hnsw
+    ON agent_memories USING hnsw (embedding vector_cosine_ops);
 """
 
 class MemoryManager:
