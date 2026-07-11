@@ -17,6 +17,7 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from datetime import datetime
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -162,9 +163,13 @@ class RoutingPolicy:
 
     # Escalation triggers
     escalate_on_retry_count: int = 2
+    # Real-estate ops language ("under contract", "legal description",
+    # "contractor", "refund policy") must NOT escalate — only genuinely
+    # high-stakes phrases do. Matched on word boundaries, not substrings.
     escalate_on_keywords: List[str] = field(default_factory=lambda: [
-        "legal", "compliance", "contract", "lawsuit", "regulation",
-        "refund", "chargeback", "fraud",
+        "lawsuit", "litigation", "attorney", "subpoena",
+        "legal advice", "legal review", "compliance violation",
+        "chargeback", "fraud",
         "medical", "diagnosis", "prescription",
     ])
     escalate_on_categories: List[str] = field(default_factory=lambda: [
@@ -265,11 +270,12 @@ class ModelRouter:
                 is_escalation=True,
             )
 
-        # 3. Check keyword-based escalation
+        # 3. Check keyword-based escalation (word boundaries — "contractor"
+        # must not match "contract"-style substrings)
         task_lower = context.task_description.lower()
         triggered_keywords = [
             kw for kw in policy.escalate_on_keywords
-            if kw.lower() in task_lower
+            if re.search(rf"\b{re.escape(kw.lower())}\b", task_lower)
         ]
         if triggered_keywords:
             spec = self._get_model(policy.premium_model)
